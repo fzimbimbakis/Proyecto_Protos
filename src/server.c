@@ -6,7 +6,11 @@
 #include <arpa/inet.h>    //close
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netdb.h>
 #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
+
+#define IP_FOR_REQUESTS "192.168.56.2"
+#define PORT_FOR_REQUESTS "80"
 
 #define TRUE   1
 #define FALSE  0
@@ -14,9 +18,8 @@
 
 int main(){
 
-
     int opt = TRUE;
-    int master_socket , addrlen , new_socket , client_socket[500] , max_clients = 500, activity, i , valread , sd;
+    int master_socket , addrlen , new_socket, D_new_socket , client_socket[500], D_client_socket[500] , max_clients = 500, activity, i , valread , sd, D_sd;
     int max_sd;
     struct sockaddr_in address;
 
@@ -30,6 +33,7 @@ int main(){
     for (i = 0; i < max_clients; i++)
     {
         client_socket[i] = 0;
+        D_client_socket[i] = 0;
     }
 
 
@@ -83,16 +87,21 @@ int main(){
         //add child sockets to set
         for ( i = 0 ; i < max_clients ; i++)
         {
-            //socket descriptor
+            //socket descriptors
             sd = client_socket[i];
+            D_sd = D_client_socket[i];
 
             //if valid socket descriptor then add to read list
             if(sd > 0)
                 FD_SET( sd , &readfds);
+            if(D_sd > 0)
+                FD_SET( D_sd , &readfds);
 
             //highest file descriptor number, need it for the select function
             if(sd > max_sd)
                 max_sd = sd;
+            if(D_sd > max_sd)
+                max_sd = D_sd;
         }
 
         //wait for an activity on one of the sockets , timeout is NULL , so wait indefinitely
@@ -108,13 +117,30 @@ int main(){
         {
             if ((new_socket = accept(master_socket, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0)
             {
-                perror("accept");
+                perror("accept error");
                 exit(EXIT_FAILURE);
             }
 
             //inform user of socket number - used in send and receive commands
             printf("New connection , socket fd is %d , ip is : %s , port : %d \n" , new_socket , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
 
+            // Create socket to destination
+            struct addrinfo hints, *res;
+            //get host info, make socket and connect it
+            memset(&hints, 0,sizeof hints);
+            hints.ai_family=AF_UNSPEC;
+            hints.ai_socktype = SOCK_STREAM;
+            if(getaddrinfo(IP_FOR_REQUESTS, PORT_FOR_REQUESTS, &hints, &res) != 0){
+                printf( "getadrrinfo failed");
+                exit(EXIT_FAILURE);
+            }
+            D_new_socket = socket(res->ai_family,res->ai_socktype,res->ai_protocol);
+            printf( "Connecting...\n");
+            if(connect(D_new_socket,res->ai_addr,res->ai_addrlen) != 0){
+                printf( "Connect to fixed destination failed.");
+                exit(EXIT_FAILURE);
+            }
+            printf( "Connected!\n");
             //send new connection greeting message
             /*if( send(new_socket, message, strlen(message), 0) != strlen(message) )
             {
@@ -129,6 +155,7 @@ int main(){
                 //if position is empty
                 if( client_socket[i] == 0 )
                 {
+                    D_client_socket[i] = D_new_socket;
                     client_socket[i] = new_socket;
                     printf("Adding to list of sockets as %d\n" , i);
 
@@ -141,6 +168,7 @@ int main(){
         for (i = 0; i < max_clients; i++)
         {
             sd = client_socket[i];
+            D_sd = D_client_socket[i];
 
             if (FD_ISSET( sd , &readfds))
             {
@@ -154,6 +182,13 @@ int main(){
                     //Close the socket and mark as 0 in list for reuse
                     close( sd );
                     client_socket[i] = 0;
+
+                    //Somebody disconnected , get his details and print
+                    getpeername(D_sd , (struct sockaddr*)&address , (socklen_t*)&addrlen);
+                    printf( "Host disconnected , ip %s , port %d \n" , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
+                    //Close the socket and mark as 0 in list for reuse
+                    close( D_sd );
+                    D_client_socket[i] = 0;
                 }
 
                     //Echo back the message that came in
@@ -161,9 +196,47 @@ int main(){
                 {
                     //set the string terminating NULL byte on the end of the data read
                     buffer[valread] = '\0';
-                    printf("Received: %s", buffer);
+                    printf( "%s\n%s", "Received from client:", buffer);
+                    send(D_sd , buffer , strlen(buffer) , 0 );
+                    printf( "%s\n%s", "Sent to destination:", buffer);
+                }
+            }
+        }
+
+        //else its some IO operation on some other socket :)
+        for (i = 0; i < max_clients; i++)
+        {
+            D_sd = D_client_socket[i];
+            sd = client_socket[i];
+            if (FD_ISSET( D_sd , &readfds))
+            {
+                //Check if it was for closing , and also read the incoming message
+                if ((valread = read( D_sd , buffer, 1024)) == 0)
+                {
+                    //Somebody disconnected , get his details and print
+                    getpeername(D_sd , (struct sockaddr*)&address , (socklen_t*)&addrlen);
+                    printf( "Host disconnected , ip %s , port %d \n" , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
+                    //Close the socket and mark as 0 in list for reuse
+                    close( D_sd );
+                    D_client_socket[i] = 0;
+
+                    //Somebody disconnected , get his details and print
+                    getpeername(sd , (struct sockaddr*)&address , (socklen_t*)&addrlen);
+                    printf( "Host disconnected , ip %s , port %d \n" , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
+
+                    //Close the socket and mark as 0 in list for reuse
+                    close( sd );
+                    client_socket[i] = 0;
+                }
+
+                    //Echo back the message that came in
+                else
+                {
+                    //set the string terminating NULL byte on the end of the data read
+                    buffer[valread] = '\0';
+                    printf("Received from destination:\n%s", buffer);
                     send(sd , buffer , strlen(buffer) , 0 );
-                    printf("Sent: %s", buffer);
+                    printf("Sent to client:\n%s", buffer);
                 }
             }
         }
