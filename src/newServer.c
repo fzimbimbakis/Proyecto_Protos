@@ -10,7 +10,7 @@
 #include <sys/socket.h>  // socket
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-
+#include <netdb.h>
 //#include "socks5.h"
 #include "args.h"
 #include "selector.h"
@@ -18,8 +18,8 @@
 
 #define MAX_CONNECTIONS_QUEUE 20
 
-#define IP_FOR_REQUESTS "192.168.56.2"
-#define PORT_FOR_REQUESTS "80"
+#define IP_FOR_REQUESTS "127.0.0.1"
+#define PORT_FOR_REQUESTS "3000"
 
 /**
  * Archivo construido tomando main.c de Juan Codagnone de ejemplo
@@ -37,6 +37,11 @@
  */
 
 static bool done = false;
+
+struct fdPair{
+    int fdClient;
+    int fdOrigin;
+}fdPair;
 
 static void
 sigterm_handler(const int signal) {
@@ -65,15 +70,23 @@ void receive(struct selector_key *key){
         buffer[valread] = '\0';
 
         // Print data (initial approach)
-        printf( "%s %d: %s", "Received from client", key->fd,  buffer);
-
-
-
+        printf( "%s %d: %s", "Received", key->fd,  buffer);
+        if(((struct fdPair *) (key->data))->fdOrigin != key->fd) {
+            printf("Send to %d: %s", ((struct fdPair *) (key->data))->fdOrigin, buffer);
+            send(((struct fdPair *) (key->data))->fdOrigin, buffer, strlen(buffer), 0);
+        }else{
+            printf("Send to %d: %s", ((struct fdPair *) (key->data))->fdClient, buffer);
+            send(((struct fdPair *) (key->data))->fdClient , buffer , strlen(buffer) , 0 );
+        }
     }
 }
 struct addrinfo *res;
 void socksv5_passive_accept(struct selector_key *key){
     printf("Socks passive accept %d \n", key->fd);
+
+    // TODO Free pair
+    struct fdPair *pair = malloc(sizeof(fdPair));
+
     struct sockaddr_storage client_address;
     int addrlen = sizeof(client_address), new_socket;
     if ((new_socket = accept(key->fd, (struct sockaddr *)&client_address, (socklen_t*)&addrlen))<0)
@@ -85,10 +98,10 @@ void socksv5_passive_accept(struct selector_key *key){
     const struct fd_handler socksv5 = {
             .handle_read       = receive,
             .handle_write      = NULL,
-            .handle_close      = NULL, // nada que liberar
+            .handle_close      = NULL, // nada que liberar TODO cerrar fds
     };
-    selector_register(key->s, new_socket, &socksv5, OP_READ, NULL);
-
+    selector_register(key->s, new_socket, &socksv5, OP_READ, pair);
+    pair->fdClient = new_socket;
 
     int D_new_socket = socket(res->ai_family,res->ai_socktype,res->ai_protocol);
     printf( "Connecting...\n");
@@ -102,7 +115,9 @@ void socksv5_passive_accept(struct selector_key *key){
             .handle_close      = NULL, // nada que liberar
     };
     printf( "Connected to fixed destination!\n");
-    selector_register(key->s, D_new_socket, D_socksv5, OP_WRITE, NULL);
+    selector_register(key->s, D_new_socket, &D_socksv5, OP_READ, pair);
+    pair->fdOrigin = D_new_socket;
+
 
 }
 int
@@ -118,6 +133,7 @@ main(const int argc, const char **argv) {
         printf( "getadrrinfo failed");
         exit(EXIT_FAILURE);
     }
+    printf("Fixed address obtained\n");
 
     /*  New empty args struct           */
     socks5args args = malloc(sizeof(socks5args_struct));

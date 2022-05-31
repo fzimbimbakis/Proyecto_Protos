@@ -62,6 +62,7 @@ int main(int argc, char *argv[]) {
         //while (totalBytesRcvd < echoStringLen && numBytes >= 0) {
             //char buffer[BUFSIZE];
             /* Receive up to the buffer size (minus 1 to leave space for a null terminator) bytes from the sender */
+            // TODO si no recibe nada traba los envios al server también
             size_t numBytes = recv(sock, buffer, BUFSIZE - 1, 0);
             if (numBytes < 0) {
                 log(ERROR, "recv() failed")
