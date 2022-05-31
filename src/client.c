@@ -41,6 +41,18 @@ int main(int argc, char *argv[]) {
     //unsigned int totalBytesRcvd = 0; // Count of total bytes received
     //log(INFO, "Received: ")     // Setup to print the echoed string
     while(1) {
+        buffer[0] = 0;
+        size_t numBytes = recv(sock, buffer, BUFSIZE - 1, 0);
+        if (numBytes < 0) {
+            log(ERROR, "recv() failed")
+        } else if (numBytes == 0)
+        log(ERROR, "recv() connection closed prematurely")
+        else {
+            //totalBytesRcvd += numBytes; // Keep tally of total bytes
+            buffer[numBytes] = '\0';    // Terminate the string!
+            printf("Received: %s", buffer);      // Print the echo buffer
+        }
+
         char c;
         while ((c = getchar()) != '\n') {
             if (c == EOF)
@@ -56,22 +68,13 @@ int main(int argc, char *argv[]) {
         idx = 0;
         send(sock, buffer, strlen(buffer), 0);
         printf("Sent: %s", buffer);
-        buffer[0] = 0;
+
 
 
         //while (totalBytesRcvd < echoStringLen && numBytes >= 0) {
             //char buffer[BUFSIZE];
             /* Receive up to the buffer size (minus 1 to leave space for a null terminator) bytes from the sender */
-            size_t numBytes = recv(sock, buffer, BUFSIZE - 1, 0);
-            if (numBytes < 0) {
-                log(ERROR, "recv() failed")
-            } else if (numBytes == 0)
-                log(ERROR, "recv() connection closed prematurely")
-            else {
-                //totalBytesRcvd += numBytes; // Keep tally of total bytes
-                buffer[numBytes] = '\0';    // Terminate the string!
-                printf("Received: %s", buffer);      // Print the echo buffer
-            }
+
         //}
     }
 

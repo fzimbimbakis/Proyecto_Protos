@@ -16,11 +16,11 @@ int main(){
 
 
     int opt = TRUE;
-    int master_socket , addrlen , new_socket , client_socket[500] , max_clients = 500, activity, i , valread , sd;
+    int master_socket , addrlen , new_socket , is_auth[500], client_socket[500] , max_clients = 500, activity, i , valread , sd;
     int max_sd;
     struct sockaddr_in address;
 
-   //char *message = "ECHO Daemon v1.0 \r\n";
+   char *message = "Hello! Enter your username and password with the following format: username;password\n";
 
     char buffer[1025];  //data buffer of 1K
 
@@ -30,6 +30,7 @@ int main(){
     for (i = 0; i < max_clients; i++)
     {
         client_socket[i] = 0;
+        is_auth[i]=FALSE;
     }
 
 
@@ -116,12 +117,12 @@ int main(){
             printf("New connection , socket fd is %d , ip is : %s , port : %d \n" , new_socket , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
 
             //send new connection greeting message
-            /*if( send(new_socket, message, strlen(message), 0) != strlen(message) )
+            if( send(new_socket, message, strlen(message), 0) != strlen(message) )
             {
                 perror("send");
             }
 
-            puts("Welcome message sent successfully");*/
+            puts("Welcome message sent successfully");
 
             //add new socket to array of sockets
             for (i = 0; i < max_clients; i++)
@@ -159,11 +160,38 @@ int main(){
                     //Echo back the message that came in
                 else
                 {
-                    //set the string terminating NULL byte on the end of the data read
                     buffer[valread] = '\0';
-                    printf("Received: %s", buffer);
-                    send(sd , buffer , strlen(buffer) , 0 );
-                    printf("Sent: %s", buffer);
+                    if(!is_auth[i]){
+                        int auth=TRUE;
+                        char * token= strtok(buffer, ";");
+                        if(strcmp(token, "facu")!=0){
+                            printf("User incorrect\n");
+                            send(sd, "User incorrect\n", strlen("User incorrect\n"), 0);
+                            close( sd );
+                            auth=FALSE;
+                            client_socket[i] = 0;
+                        }
+                        token= strtok(NULL,";");
+                        if(strcmp(token, "facu")!=0){
+                            printf("Pass incorrect\n");
+                            send(sd, "Pass incorrect\n", strlen("Pass incorrect\n"), 0);
+                            close( sd );
+                            auth=FALSE;
+                            client_socket[i] = 0;
+                        }
+
+                        if(auth){
+                            printf("Logged in correctly!\n");
+                            send(sd, "Logged in correctly!\n", strlen("Logged in correctly!\n"), 0);
+                            is_auth[i]=TRUE;
+                        }
+
+                    }else {
+                        //set the string terminating NULL byte on the end of the data read
+                        printf("Received: %s", buffer);
+                        send(sd, buffer, strlen(buffer), 0);
+                        printf("Sent: %s", buffer);
+                    }
                 }
             }
         }
