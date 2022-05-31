@@ -3,7 +3,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "parser.h"
+#include "../include/parser.h"
 
 /* CDT del parser */
 struct parser {
@@ -88,4 +88,3 @@ const unsigned *
 parser_no_classes(void) {
     return classes;
 }
-
