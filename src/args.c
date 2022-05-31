@@ -40,8 +40,9 @@ user(char *s, struct users *user) {
 static void
 version(void) {
     fprintf(stderr, "socks5v version 0.0\n"
-                    "ITBA Protocolos de ComunicaciÃ³n 2020/1 -- Grupo X\n"
+                    "ITBA Protocolos de Comunicación 2022/1 -- Grupo X\n"
                     "AQUI VA LA LICENCIA\n");
+                    // TODO agregar licencia.
 }
 
 static void
@@ -50,60 +51,44 @@ usage(const char *progname) {
             "Usage: %s [OPTION]...\n"
             "\n"
             "   -h               Imprime la ayuda y termina.\n"
-            "   -l <SOCKS addr>  DirecciÃ³n donde servirÃ¡ el proxy SOCKS.\n"
-            "   -L <conf  addr>  DirecciÃ³n donde servirÃ¡ el servicio de management.\n"
+            "   -l <SOCKS addr>  Dirección donde servirÃ¡ el proxy SOCKS.\n"
+            "   -N Deshabilita los passwords disectors.\n"
+            "   -L <conf  addr>  Dirección donde servirÃ¡ el servicio de management.\n"
             "   -p <SOCKS port>  Puerto entrante conexiones SOCKS.\n"
             "   -P <conf port>   Puerto entrante conexiones configuracion\n"
-            "   -u <name>:<pass> Usuario y contraseÃ±a de usuario que puede usar el proxy. Hasta 10.\n"
-            "   -v               Imprime informaciÃ³n sobre la versiÃ³n versiÃ³n y termina.\n"
-            "\n"
-            "   --doh-ip    <ip>    \n"
-            "   --doh-port  <port>  XXX\n"
-            "   --doh-host  <host>  XXX\n"
-            "   --doh-path  <host>  XXX\n"
-            "   --doh-query <host>  XXX\n"
-
+            "   -u <name>:<pass> Usuario y contraseña de usuario que puede usar el proxy. Hasta 10.\n"
+            "   -v               Imprime información sobre la versión y termina.\n"
             "\n",
             progname);
     exit(1);
 }
 
-void
-parse_args(const int argc, char **argv, struct socks5args *args) {
+void parse_args(const int argc, const char **argv, socks5args args) {
     memset(args, 0, sizeof(*args)); // sobre todo para setear en null los punteros de users
 
     args->socks_addr = "0.0.0.0";
     args->socks_port = 1080;
+    memset(&args->socks_addr_info, 0, sizeof(args->socks_addr_info));
 
     args->mng_addr   = "127.0.0.1";
     args->mng_port   = 8080;
+    memset(&args->mng_addr_info, 0, sizeof(args->socks_addr_info));
 
     args->disectors_enabled = true;
 
-    args->doh.host = "localhost";
-    args->doh.ip   = "127.0.0.1";
-    args->doh.port = 8053;
-    args->doh.path = "/getnsrecord";
-    args->doh.query = "?dns=";
+
 
     int c;
     int nusers = 0;
 
     while (true) {
         int option_index = 0;
-        static struct option long_options[] = {
-                { "doh-ip",    required_argument, 0, 0xD001 },
-                { "doh-port",  required_argument, 0, 0xD002 },
-                { "doh-host",  required_argument, 0, 0xD003 },
-                { "doh-path",  required_argument, 0, 0xD004 },
-                { "doh-query", required_argument, 0, 0xD005 },
-                { 0,           0,                 0, 0 }
-        };
 
-        c = getopt_long(argc, argv, "hl:L:Np:P:u:v", long_options, &option_index);
+        c = getopt_long(argc, argv, "hl:L:Np:P:u:v", NULL, &option_index);
         if (c == -1)
             break;
 
+        // TODO(bruno) manegar tipos de addrs?
         switch (c) {
             case 'h':
                 usage(argv[0]);
@@ -135,21 +120,6 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
             case 'v':
                 version();
                 exit(0);
-                break;
-            case 0xD001:
-                args->doh.ip = optarg;
-                break;
-            case 0xD002:
-                args->doh.port = port(optarg);
-                break;
-            case 0xD003:
-                args->doh.host = optarg;
-                break;
-            case 0xD004:
-                args->doh.path = optarg;
-                break;
-            case 0xD005:
-                args->doh.query = optarg;
                 break;
             default:
                 fprintf(stderr, "unknown argument %d.\n", c);

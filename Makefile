@@ -1,14 +1,15 @@
 GCC_FLAGS= -Wall -g -Wextra -I./include
-
+CLIENT_C_FILES = src/client.c src/tcpClientUtil.c src/util.c src/logger.c
+SERVER_C_FILES = src/selector.c src/args.c src/newServer.c
 all: server  client
 
 client: src/client.c src/tcpClientUtil.c src/logger.c
 	mkdir -p bin
-	gcc $(GCC_FLAGS)  src/client.c src/tcpClientUtil.c src/util.c src/logger.c -o bin/client
+	gcc $(GCC_FLAGS)  $(CLIENT_C_FILES) -o bin/client
 
 server: src/server.c
 	mkdir -p bin
-	gcc $(GCC_FLAGS) src/server.c -o bin/server
+	gcc $(GCC_FLAGS) $(SERVER_C_FILES) -o bin/server
 
 clean:
 	rm -f bin/*
