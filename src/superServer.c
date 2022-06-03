@@ -25,7 +25,7 @@
 #include "buffer.h"
 #include "selector.h"
 #include "args.h"
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 10
 #define MAX_CONNECTIONS_QUEUE 20
 #define IP_FOR_REQUESTS "127.0.0.1"
 #define PORT_FOR_REQUESTS "3000"
@@ -69,6 +69,16 @@ const struct fd_handler socksv5 = {
 //        .handle_block      = socksv5_block,
 };
 
+void setNewInterests( fd_selector selector, int fd, buffer * read_buffer, buffer * write_buffer){
+    fd_interest i = OP_NOOP;
+    if(buffer_can_write(read_buffer))
+        i = i | OP_READ;
+    if(buffer_can_read(write_buffer))
+        i = i | OP_WRITE;
+    selector_set_interest(selector, fd, i);
+
+}
+
 void socksv5_read(struct selector_key *key){
     char * etiqueta = "socksv5_read";
     struct information * myInfo = key->data;
@@ -87,7 +97,7 @@ void socksv5_read(struct selector_key *key){
     }
     //// Me fijo que pueda leer
     if(!buffer_can_write(buffer_r)){
-        debug(etiqueta, "Buffer de lectura lleno y estoy subscripto para leer!", 0);
+        debug(etiqueta, "Buffer de lectura lleno y estoy suscripto para leer!", 0);
         // TODO(bruno) No se que se hace aca
         return;
     }
@@ -112,45 +122,13 @@ void socksv5_read(struct selector_key *key){
             shutdown(myInfo->fdRead, SHUT_WR);
         }
          */
-        debug(etiqueta, "Leí un EOF. Termino mi subscripción del el fd.", 0);
+        debug(etiqueta, "Leí un EOF. Termino mi suscripción del el fd.", 0);
         printf("Unregister fd %d", key->fd);
         selector_unregister_fd(key->s, key->fd);
         return;
     }
-
-    fd_interest interest_current_socket = OP_NOOP;
-
-    //// Si me queda espacio en el buffer de lectura, me subscribo a lectura.
-    if(buffer_can_write(buffer_r)){
-        debug(etiqueta, "Me subscribo a lectura del fd actual.", 0);
-        interest_current_socket = interest_current_socket | OP_READ;
-    }
-
-    //// Si tengo algo que escribir, me subscribo a escritura.
-    if(buffer_can_read(buffer_w)){
-        debug(etiqueta, "Me subscribo a escritura del fd actual.",0);
-        interest_current_socket = interest_current_socket | OP_WRITE;
-    }
-    selector_set_interest_key(key, interest_current_socket);
-
-    fd_interest interest_other_socket = OP_NOOP;
-
-    //// Si me queda espacio en el buffer de lectura, me subscribo a lectura.
-    if(buffer_can_write(buffer_w)){
-        debug(etiqueta, "Me subscribo a lectura del fd contrario.", 0);
-        interest_other_socket = interest_other_socket | OP_READ;
-    }
-
-    //// Si tengo algo que escribir, me subscribo a escritura.
-    if(buffer_can_read(buffer_r)){
-        debug(etiqueta, "Me subscribo a escritura del fd contrario.", 0);
-        interest_other_socket = interest_other_socket | OP_WRITE;
-    }
-    struct selector_key * new_key = malloc(sizeof(struct selector_key));
-    new_key->s = key->s;
-    new_key->fd = fdWrite;
-    new_key->data = key->data;
-    selector_set_interest_key(new_key, interest_other_socket);
+    setNewInterests(key->s, fdRead, buffer_r, buffer_w);
+    setNewInterests(key->s, fdWrite, buffer_w, buffer_r);
 }
 
 void socksv5_write(struct selector_key *key){
@@ -172,7 +150,7 @@ void socksv5_write(struct selector_key *key){
     }
     //// Me fijo que tenga algo para escribir
     if(!buffer_can_read(buffer_w)) {
-        debug(etiqueta, "No tengo nada para leer y estoy subscrito a escritura!", 0);
+        debug(etiqueta, "No tengo nada para leer y estoy suscrito a escritura!", 0);
         // TODO(bruno) No se que se hace aca
         return;
     }
@@ -187,55 +165,14 @@ void socksv5_write(struct selector_key *key){
         buffer_read_adv(buffer_w, received);
     }
     else{              // Cerro la conexión
-        /*
-        // Cierro el socket para leer
-        shutdown(myInfo->fdRead, SHUT_RD);
-
-        if(myInfo->fdWrite != -1) {
-            // Cierro el socket para escribir
-            shutdown(myInfo->fdRead, SHUT_WR);
-        }
-         */
         // TODO Qué hacer acá?
         debug(etiqueta, "No escribí nada?",0);
 //        selector_unregister_fd(key->s, key->fd);
         return;
     }
 
-    fd_interest interest_current_socket = OP_NOOP;
-
-    //// Si me queda espacio en el buffer de lectura, me subscribo a lectura.
-    if(buffer_can_write(buffer_r)){
-        debug(etiqueta, "Me subscribo a lectura en el fd actual.",0);
-        interest_current_socket = interest_current_socket | OP_READ;
-    } else debug(etiqueta, "Buffer de lectura del fd actual completo.",0);
-
-    //// Si tengo algo que escribir, me subscribo a escritura.
-    if(buffer_can_read(buffer_w)){
-        debug(etiqueta, "Me subscribo a escritura en el fd actual.",0);
-        interest_current_socket = interest_current_socket | OP_WRITE;
-    } else debug(etiqueta, "Buffer de escritura esta vacio.",0);
-    selector_set_interest_key(key, interest_current_socket);
-
-    fd_interest interest_other_socket = OP_NOOP;
-
-    //// Si me queda espacio en el buffer de lectura, me subscribo a lectura.
-    if(buffer_can_write(buffer_w)){
-        debug(etiqueta, "Me subscribo a lectura del fd contrario.",0);
-        interest_other_socket = interest_other_socket | OP_READ;
-    } else debug(etiqueta, "Buffer de lectura del fd contrario completo.",0);
-
-    //// Si tengo algo que escribir, me subscribo a escritura.
-    if(buffer_can_read(buffer_r)){
-        debug(etiqueta, "Me subscribo a escritura del fd contrario.",0);
-        interest_other_socket = interest_other_socket | OP_WRITE;
-    } else debug(etiqueta, "Buffer de escritura del fd contrario vacio.",0);
-
-    struct selector_key * new_key = malloc(sizeof(struct selector_key));
-    new_key->s = key->s;
-    new_key->fd = fdRead;
-    new_key->data = key->data;
-    selector_set_interest_key(new_key, interest_other_socket);
+    setNewInterests(key->s, fdRead, buffer_r, buffer_w);
+    setNewInterests(key->s, fdWrite, buffer_w, buffer_r);
 
 }
 
@@ -289,9 +226,9 @@ void socksv5_passive_accept(struct selector_key *key){
     new_information->write_buffer = malloc(sizeof(buffer));
     buffer_init( (new_information->write_buffer), BUFFER_SIZE + 1, malloc(BUFFER_SIZE + 1));
 
-    //// Deberia subscribir a ambos?
-    selector_register(key->s, new_socket, &socksv5, OP_READ, new_information); // Subscripción
-    selector_register(key->s, D_new_socket, &socksv5, OP_READ, new_information); // Subscripción
+    //// Deberia suscribir a ambos?
+    selector_register(key->s, new_socket, &socksv5, OP_READ, new_information); // Suscripción
+    selector_register(key->s, D_new_socket, &socksv5, OP_READ, new_information); // Suscripción
 }
 
 
@@ -393,7 +330,7 @@ main(const int argc, const char **argv) {
             .handle_close      = NULL, // nada que liberar
     };
 
-    //// Acá me estoy subscribiendo directo
+    //// Acá me estoy suscribiendo directo
     ss = selector_register(selector, server, &socksv5, OP_READ, NULL);
     if(ss != SELECTOR_SUCCESS) {
         err_msg = "registering fd";
