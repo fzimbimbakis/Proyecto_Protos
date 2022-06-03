@@ -70,11 +70,11 @@ void parse_args(const int argc, const char **argv, socks5args args) {
     args->socks_port = 1080;
     memset(&args->socks_addr_info, 0, sizeof(args->socks_addr_info));
 
-    args->mng_addr   = "127.0.0.1";
-    args->mng_port   = 8080;
-    memset(&args->mng_addr_info, 0, sizeof(args->socks_addr_info));
-
-    args->disectors_enabled = true;
+//    args->mng_addr   = "127.0.0.1";
+//    args->mng_port   = 8080;
+//    memset(&args->mng_addr_info, 0, sizeof(args->socks_addr_info));
+//
+//    args->disectors_enabled = true;
 
 
 
@@ -96,18 +96,18 @@ void parse_args(const int argc, const char **argv, socks5args args) {
             case 'l':
                 args->socks_addr = optarg;
                 break;
-            case 'L':
-                args->mng_addr = optarg;
-                break;
-            case 'N':
-                args->disectors_enabled = false;
-                break;
+//            case 'L':
+//                args->mng_addr = optarg;
+//                break;
+//            case 'N':
+//                args->disectors_enabled = false;
+//                break;
             case 'p':
                 args->socks_port = port(optarg);
                 break;
-            case 'P':
-                args->mng_port   = port(optarg);
-                break;
+//            case 'P':
+//                args->mng_port   = port(optarg);
+//                break;
             case 'u':
                 if(nusers >= MAX_USERS) {
                     fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS);

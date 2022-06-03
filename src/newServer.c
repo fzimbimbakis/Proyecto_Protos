@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <netdb.h>
+#include <fcntl.h>
 //#include "socks5.h"
 #include "args.h"
 #include "selector.h"
@@ -20,7 +21,7 @@
 
 #define IP_FOR_REQUESTS "127.0.0.1"
 #define PORT_FOR_REQUESTS "3000"
-
+#include "buffer.h"
 /**
  * Archivo construido tomando main.c de Juan Codagnone de ejemplo
  *
@@ -39,8 +40,23 @@
 static bool done = false;
 
 struct fdPair{
+    //// Variables para trabajar
+
+    //// File descriptors
     int fdClient;
     int fdOrigin;
+
+    //// TODO Buffers
+    //// Buffer where origin data is stored
+    buffer originBuffer;
+    //// Buffer where client data is stored
+    buffer clientBuffer;
+
+    //// TODO Estado para saber que funciones usar
+    //// Estado actual
+    unsigned state;
+
+
 }fdPair;
 
 static void
@@ -66,6 +82,8 @@ void receive(struct selector_key *key){
     }
     else
     {
+        // TODO Pongo en el buffer y me suscribo para escritura
+
         //set the string terminating NULL byte on the end of the data read
         buffer[valread] = '\0';
 
@@ -73,6 +91,8 @@ void receive(struct selector_key *key){
         printf( "%s %d: %s", "Received", key->fd,  buffer);
         if(((struct fdPair *) (key->data))->fdOrigin != key->fd) {
             printf("Send to %d: %s", ((struct fdPair *) (key->data))->fdOrigin, buffer);
+
+            //// While para ver que pudo enviar todo
             send(((struct fdPair *) (key->data))->fdOrigin, buffer, strlen(buffer), 0);
         }else{
             printf("Send to %d: %s", ((struct fdPair *) (key->data))->fdClient, buffer);
@@ -100,10 +120,10 @@ void socksv5_passive_accept(struct selector_key *key){
             .handle_write      = NULL,
             .handle_close      = NULL, // nada que liberar TODO cerrar fds
     };
-    selector_register(key->s, new_socket, &socksv5, OP_READ, pair);
     pair->fdClient = new_socket;
 
     int D_new_socket = socket(res->ai_family,res->ai_socktype,res->ai_protocol);
+    //// Socket no bloqueante
     printf( "Connecting...\n");
     if(connect(D_new_socket,res->ai_addr,res->ai_addrlen) != 0){
         printf( "Connect to fixed destination failed.");
@@ -115,6 +135,8 @@ void socksv5_passive_accept(struct selector_key *key){
             .handle_close      = NULL, // nada que liberar
     };
     printf( "Connected to fixed destination!\n");
+    //// Tengo que hacer toda la conexión antes de subscribirme. Si no puede ser inutil
+    selector_register(key->s, new_socket, &socksv5, OP_READ, pair); // Subscripción
     selector_register(key->s, D_new_socket, &D_socksv5, OP_READ, pair);
     pair->fdOrigin = D_new_socket;
 
@@ -165,7 +187,10 @@ main(const int argc, const char **argv) {
 
     /* No importa reportar nada si falla, man 7 ip. */
     // TODO(bruno) No se que es el 1.
+    // TODO(bruno) Setear el socket para que no sea bolqueante solo para confirmar
     setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+    fcntl(server, F_SETFL, O_NONBLOCK);  // set to non-blocking
+
 
     if(bind(server, (struct sockaddr*) &(args->socks_addr_info), sizeof(args->socks_addr_info)) < 0) {
         err_msg = "unable to bind socket";
@@ -213,6 +238,7 @@ main(const int argc, const char **argv) {
             .handle_close      = NULL, // nada que liberar
     };
 
+    //// Acá me estoy subscribiendo directo
     ss = selector_register(selector, server, &socksv5,
                            OP_READ, NULL);
     if(ss != SELECTOR_SUCCESS) {
@@ -261,4 +287,30 @@ main(const int argc, const char **argv) {
 
 
 }
+
+
+
+/**
+ * Resumen
+ * (metadata = estructura que le puedo pasar al selector_register)
+ * select_register: te subscribe para cierta acción y llama en ese momento a la función handler.
+ * Tengo que generar estados por cada estapa.
+ * Cada estado viene atado a ciertas funciones y/o variables. Por lo tento, llevo en la metadata el estado para saber que hacer/usar.
+ * Ojo con el connect que es bloqueante. Hay que usar la subscripción.
+ * Tengo que hacer toda la conexión antes de subscribirme (Basicamente tengo que seguir las etapas)
+ * Poner un while en las lecturas y escrituras para asegurarse de que mando todo.
+ *
+ * En la metadata van las variables a trabajar, las principales por el momento son:
+ *      -   Buffers
+ *      -   File descriptors
+ *      -   Estados
+ *
+ * Etapas básicas para un proxy transparente:
+ *      -   Me conecto con el cliente
+ *      -   Me conecto con el origen
+ *      -   Me subscribo para lectura en ambos extremos (No es seguro que el cliente sea el primero en escribir).
+ *      -   Me subscribo para escritura cuando termino de leer.
+ *      -   Cierro conexiones (Si es que termine de leer y escribir).
+ *
+**/
 
