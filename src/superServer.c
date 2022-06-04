@@ -22,8 +22,8 @@
 #include <netdb.h>
 #include <fcntl.h>
 #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
-#include "buffer.h"
-#include "selector.h"
+#include "../include/buffer.h"
+#include "../include/selector.h"
 #include "args.h"
 #define BUFFER_SIZE 10
 #define MAX_CONNECTIONS_QUEUE 20
@@ -65,11 +65,12 @@ void debug(char * etiqueta, char * mensaje, int num){
 const struct fd_handler socksv5 = {
         .handle_read       = socksv5_read,
         .handle_write      = socksv5_write,
-//        .handle_close      = socksv5_close,
-//        .handle_block      = socksv5_block,
+//        .handle_close // TODO
+//        .handle_block // TODO
 };
 
 void setNewInterests( fd_selector selector, int fd, buffer * read_buffer, buffer * write_buffer){
+    //// Esto es para el estado copy
     fd_interest i = OP_NOOP;
     if(buffer_can_write(read_buffer))
         i = i | OP_READ;
@@ -113,16 +114,14 @@ void socksv5_read(struct selector_key *key){
         buffer_write_adv(buffer_r, received);
     }
     else{              // Cerro la conexión
-        /*
-        // Cierro el socket para leer
-        shutdown(myInfo->fdRead, SHUT_RD);
-
-        if(myInfo->fdWrite != -1) {
-            // Cierro el socket para escribir
-            shutdown(myInfo->fdRead, SHUT_WR);
-        }
-         */
         debug(etiqueta, "Leí un EOF. Termino mi suscripción del el fd.", 0);
+        // TODO Qué hacer acá?
+        /**
+         * Cierro la lectura del fd
+         * Si no hay más para pasar, cierro la escritura al destino
+         * Cierro y desregistro los fds si esta todo shutdown
+         * Cuando hago shutdown de algo que ya esta cerrado me devuelve -1      !!!!!
+        */
         printf("Unregister fd %d", key->fd);
         selector_unregister_fd(key->s, key->fd);
         return;
@@ -210,6 +209,7 @@ void socksv5_passive_accept(struct selector_key *key){
         return;
     }
     int connectResult = connect(D_new_socket,res->ai_addr,res->ai_addrlen);
+    // TODO Me tengo que suscribir a escritua y ahí me avisa cuando me conecté.
     if(connectResult != 0 && errno != 36){
         printf( "Connect to fixed destination failed. %d\n", errno);
         exit(EXIT_FAILURE);
