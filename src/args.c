@@ -80,12 +80,15 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
     while (true) {
         int option_index = 0;
 
-        c = getopt_long(argc, argv, "hl:L:Np:P:u:v", NULL, &option_index);
+        c = getopt_long(argc, argv, "dhl:L:Np:P:u:v", NULL, &option_index);
         if (c == -1)
             break;
 
         // TODO(bruno) manegar tipos de addrs?
         switch (c) {
+            case 'd':
+                args->debug = 1;
+                break;
             case 'h':
                 usage(argv[0]);
                 break;

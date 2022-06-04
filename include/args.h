@@ -17,6 +17,8 @@ struct socks5args {
     char *          mng_addr;
     unsigned short  mng_port;
 
+    int             debug;
+
     bool            disectors_enabled;
 
     struct users    users[MAX_USERS];
