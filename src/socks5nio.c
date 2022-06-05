@@ -34,9 +34,9 @@ const struct fd_handler socks5_handler = {
 static const struct state_definition client_statbl[] = {
         {
                 .state = HELLO_READ,
-//                .on_arrival = hello_read_init,
-//                .on_departure = hello_read_close,
-//                .on_read_ready = hello_read,
+                .on_arrival = hello_read_init,
+                .on_departure = hello_read_close,
+                .on_read_ready = hello_read,
         },
         {       .state = HELLO_WRITE,
 //                .on_arrival = hello_write_init,
@@ -239,118 +239,6 @@ socksv5_passive_accept(struct selector_key *key) {
     socks5_destroy(state);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// HELLO
-////////////////////////////////////////////////////////////////////////////////
-
-/** callback del parser utilizado en `read_hello' */
-static void
-on_hello_method(struct hello_parser *p, const uint8_t method) {
-//    uint8_t *selected  = p->data;
-
-//    if(SOCKS_HELLO_NOAUTHENTICATION_REQUIRED == method) {
-//        *selected = method;
-//    }
-}
-
-/** inicializa las variables de los estados HELLO_â€¦ */
-static void
-hello_read_init(const unsigned state, struct selector_key *key) {
-    struct hello_st *d = &ATTACHMENT(key)->client.hello;
-
-    d->rb                              = &(ATTACHMENT(key)->read_buffer);
-    d->wb                              = &(ATTACHMENT(key)->write_buffer);
-    d->parser.data                     = &d->method;
-    d->parser.on_authentication_method = on_hello_method, hello_parser_init(
-            &d->parser);
-}
-
-static unsigned
-hello_process(const struct hello_st* d);
-
-/** lee todos los bytes del mensaje de tipo `hello' y inicia su proceso */
-static unsigned
-hello_read(struct selector_key *key) {
-    struct hello_st *d = &ATTACHMENT(key)->client.hello;
-    unsigned  ret      = HELLO_READ;
-    bool  error    = false;
-    uint8_t *ptr;
-    size_t  count;
-    ssize_t  n;
-
-    ptr = buffer_write_ptr(d->rb, &count);
-    n = recv(key->fd, ptr, count, 0);
-    if(n > 0) {
-        buffer_write_adv(d->rb, n);
-        const enum hello_state st = hello_consume(d->rb, &d->parser, &error);
-        if(hello_is_done(st, 0)) {
-            if(SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE)) {
-                ret = hello_process(d);
-            } else {
-                ret = ERROR;
-            }
-        }
-    } else {
-        ret = ERROR;
-    }
-
-    return error ? ERROR : ret;
-}
-
-/** procesamiento del mensaje `hello' */
-static unsigned
-hello_process(const struct hello_st* d) {
-    unsigned ret = HELLO_WRITE;
-//
-//    uint8_t m = d->method;
-//    const uint8_t r = (m == SOCKS_HELLO_NO_ACCEPTABLE_METHODS) ? 0xFF : 0x00;
-//    if (-1 == hello_marshall(d->wb, r)) {
-//        ret  = ERROR;
-//    }
-//    if (SOCKS_HELLO_NO_ACCEPTABLE_METHODS == m) {
-//        ret  = ERROR;
-//    }
-    return ret;
-}
-
-void
-hello_read_close(const unsigned state, struct selector_key *key)
-{
-    struct hello_st *d = &ATTACHMENT(key)->client.hello;
-
-//    hello_parser_close(&d->parser);
-}
-
-unsigned
-hello_write(struct selector_key *key)
-{
-
-    struct hello_st *d = &ATTACHMENT(key)->client.hello;
-
-    unsigned ret = HELLO_WRITE;
-    uint8_t *ptr;
-    size_t count;
-    ssize_t n;
-
-
-    ptr = buffer_read_ptr(d->wb, &count);
-//    n= send(key->fd, ptr, count, MSG_NOSIGNAL);
-
-    if(n==-1){
-        ret=ERROR;
-    }else{
-        buffer_read_adv(d->wb,n);
-        if(!buffer_can_read(d->wb)){
-            if(SELECTOR_SUCCESS== selector_set_interest_key(key, OP_READ)){
-                ret= REQUEST_READ;
-            }else{
-                ret=ERROR;
-            }
-        }
-    }
-
-    return ret;
-}
 
 //////////////////////////////////////////////////////////////////////////
 // REQUEST

@@ -8,6 +8,7 @@
 
 
 /** Used by the HELLO_READ and HELLO_WRITE states */
+struct hello_parser parser;
 typedef struct hello_st
 {
     /** Buffers used for IO */
