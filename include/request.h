@@ -51,8 +51,8 @@ union socks_addr
 
 struct request
 {
-    enum socks_req_cmd cmd;
-    enum socks_addr_type dest_addr_type;
+//    enum socks_req_cmd cmd;
+//    enum socks_addr_type dest_addr_type;
     union socks_addr dest_addr;
     in_port_t dest_port;
 };

@@ -88,6 +88,6 @@ int hello_marshal(buffer *b, const uint8_t method);
 
 bool hello_is_done(const enum hello_state state, bool *error);
 
-void hello_parser_close(struct hello_parser *p);
+//void hello_parser_close(struct hello_parser *p);
 
 #endif //PROYECTO_PROTOS_HELLO_H
