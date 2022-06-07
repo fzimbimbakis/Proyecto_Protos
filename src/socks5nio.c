@@ -303,6 +303,7 @@ static unsigned request_write(struct selector_key *key)
     ssize_t n;
     ptr = buffer_read_ptr(b, &count);
 //    n = send(key->fd, ptr, count, MSG_NOSIGNAL);
+    n = 0; // TODO Esto es trucho para que no salte el error
     if (n == -1)
     {
         ret = ERROR;
@@ -427,14 +428,15 @@ static unsigned request_process(struct selector_key *key, struct request_st *d)
 //            .ai_protocol=0;
 //    };
 //
+    return 0;
     //TODO: no se llega a ver todo en la clase
 }
 
 // procesa el resultado de la resolución de nombres
 static unsigned request_resolv_done(struct selector_key *key)
 {
-    struct request_st *d = &ATTACHMENT(key)->client.request;
-    struct socks5 *s = ATTACHMENT(key);
+//    struct request_st *d = &ATTACHMENT(key)->client.request;
+//    struct socks5 *s = ATTACHMENT(key);
 
 //    if (d->addr_resolv.cant_addr == 0)
 //    {
@@ -475,9 +477,9 @@ static unsigned request_resolv_done(struct selector_key *key)
 //        d->addr_resolv.cant_addr--;
 //    }
 
-    return request_connect(key, d);
+//    return request_connect(key, d);
 
-    fail:
+//    fail:
 //    if (-1 != request_marshal(s->client.request.wb, d->status, d->request.dest_addr_type, d->request.dest_addr, d->request.dest_port))
 //    {
 //        return REQUEST_WRITE;
