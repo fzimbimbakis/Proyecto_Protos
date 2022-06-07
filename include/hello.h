@@ -129,21 +129,21 @@ void hello_parser_close(struct hello_parser *p);
  * @param p
  * @param method
  */
-static void on_hello_method(struct hello_parser *p, uint8_t method);
+static void on_hello_method(void *p, uint8_t method);
 
 /**
  * Inicializa las variables de los estados hello_st
  * @param state
  * @param key
  */
-static void hello_read_init(unsigned state, struct selector_key *key);
+void hello_read_init(unsigned state, struct selector_key *key);
 
 /**
  * Lee todos los bytes del mensaje de tipo 'hello' y inicia su proceso
  * @param key
  * @return
  */
-static unsigned hello_read(struct selector_key *key);
+unsigned hello_read(struct selector_key *key);
 
 /**
  * Procesamiento del mensaje 'hello'

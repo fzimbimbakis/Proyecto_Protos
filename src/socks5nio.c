@@ -11,13 +11,8 @@
 #include <pthread.h>
 #include <arpa/inet.h>
 
-#include "hello.h"
+#include "../include/hello.h"
 
-#include "../include/request.h"
-#include "../include/buffer.h"
-#include "../include/socks5nio.h"
-#include "../include/stm.h"
-#include "../include/debug.h"
 #include "netutils.h"
 #include "connecting.h"
 #include "stm.h"
@@ -128,9 +123,9 @@ static struct socks5* socks5_new(int client_fd){
     ret->client_fd= client_fd;
     ret->client_addr_len= sizeof(ret->client_addr);
 
-    // TODO(bruno) Set initial state to HELLO_READ
-    debug(etiqueta, REQUEST_CONNECTING, "Setting first state", client_fd);
-    ret->stm.initial =REQUEST_CONNECTING;
+    //// INITIAL STATE
+    debug(etiqueta, HELLO_READ, "Setting first state", client_fd);
+    ret->stm.initial =HELLO_READ;
     ret->stm.max_state= ERROR;
     ret->stm.current= &client_statbl[4];
     ret->stm.states= client_statbl;
