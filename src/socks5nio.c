@@ -34,9 +34,9 @@ static const struct state_definition client_statbl[] = {
                 .on_read_ready = hello_read,
         },
         {       .state = HELLO_WRITE,
-//                .on_arrival = hello_write_init,
-//                .on_departure = hello_write_close,
-//                .on_write_ready = hello_write
+                .on_arrival = hello_write_init,
+                .on_departure = hello_write_close,
+                .on_write_ready = hello_write
 
         },
         /**{
@@ -127,7 +127,7 @@ static struct socks5* socks5_new(int client_fd){
     debug(etiqueta, HELLO_READ, "Setting first state", client_fd);
     ret->stm.initial =HELLO_READ;
     ret->stm.max_state= ERROR;
-    ret->stm.current= &client_statbl[4];
+    ret->stm.current= &client_statbl[0];
     ret->stm.states= client_statbl;
     stm_init(&ret->stm);
 

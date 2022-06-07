@@ -125,7 +125,7 @@ static void on_hello_method(void  *p, const uint8_t method) {
     }
 }
 
-/** inicializa las variables de los estados HELLO_â€¦ */
+/** inicializa las variables de los estados HELLO_st */
 void hello_read_init(const unsigned state, struct selector_key *key) {
     char * etiqueta = "HELLO READ INIT";
     debug(etiqueta, 0, "Starting stage", key->fd);
@@ -138,6 +138,17 @@ void hello_read_init(const unsigned state, struct selector_key *key) {
     hello_parser_init(d->parser);
     debug(etiqueta, 0, "Finished stage", key->fd);
 }
+
+/** inicializa las variables de los estados HELLO_st */
+void hello_write_init(const unsigned state, struct selector_key *key) {
+    char * etiqueta = "HELLO WRITE INIT";
+    debug(etiqueta, 0, "Starting stage", key->fd);
+    struct hello_st *d = &ATTACHMENT(key)->client.hello;
+    d->rb                              = &(ATTACHMENT(key)->read_buffer);
+    d->wb                              = &(ATTACHMENT(key)->write_buffer);
+    debug(etiqueta, 0, "Finished stage", key->fd);
+}
+
 
 /** lee todos los bytes del mensaje de tipo 'hello' y inicia su proceso */
 unsigned hello_read(struct selector_key *key) {
@@ -172,8 +183,7 @@ unsigned hello_read(struct selector_key *key) {
         ret = ERROR;
     }
     debug(etiqueta, error, "Finished stage", key->fd);
-    // TODO CAMBIAR PARA VOLVER AL FLUJO NORMAL
-    return error ? ERROR : REQUEST_CONNECTING;
+    return error ? ERROR : ret;
 }
 
 /** procesamiento del mensaje `hello' */
@@ -204,9 +214,18 @@ void hello_read_close(const unsigned state, struct selector_key *key)
     debug(etiqueta, 0, "Finished stage", key->fd);
 }
 
+void hello_write_close(const unsigned state, struct selector_key *key)
+{
+    char * etiqueta = "HELLO WRITE CLOSE";
+    debug(etiqueta, 0, "Starting stage", key->fd);
+    //// Nothing to close or free
+    debug(etiqueta, 0, "Finished stage", key->fd);
+}
+
 unsigned hello_write(struct selector_key *key)
 {
-
+    char * etiqueta = "HELLO WRITE";
+    debug(etiqueta, 0, "Starting stage", key->fd);
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
 
     unsigned ret = HELLO_WRITE;
@@ -215,6 +234,7 @@ unsigned hello_write(struct selector_key *key)
     ssize_t n;
 
 
+    debug(etiqueta, 0, "Writing to client", key->fd);
     ptr = buffer_read_ptr(d->wb, &count);
     n= send(key->fd, ptr, count, MSG_NOSIGNAL);
 
@@ -224,13 +244,16 @@ unsigned hello_write(struct selector_key *key)
         buffer_read_adv(d->wb,n);
         if(!buffer_can_read(d->wb)){
             if(SELECTOR_SUCCESS== selector_set_interest_key(key, OP_READ)){
-                ret= REQUEST_READ;
+                debug(etiqueta, 0, "Setting interest to read", key->fd);
+                // TODO CAMBIAR PARA VOLVER AL FLUJO NORMAL
+                ret= REQUEST_CONNECTING;
             }else{
+                debug(etiqueta, 0, "Error, read buffer full", key->fd);
                 ret=ERROR;
             }
         }
     }
-
+    debug(etiqueta, 0, "Finished stage", key->fd);
     return ret;
 }
 

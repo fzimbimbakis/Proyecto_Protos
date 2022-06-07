@@ -153,11 +153,18 @@ unsigned hello_read(struct selector_key *key);
 static unsigned hello_process(const struct hello_st* d);
 
 /**
- * Close resources
+ * Close hello read resources
  * @param state
  * @param key
  */
 void hello_read_close(unsigned state, struct selector_key *key);
+
+/**
+ * Inicializa las variables de los estados hello_st
+ * @param state
+ * @param key
+ */
+void hello_write_init(const unsigned state, struct selector_key *key) ;
 
 /**
  * Writes bytes on buffer to client
@@ -165,5 +172,12 @@ void hello_read_close(unsigned state, struct selector_key *key);
  * @return
  */
 unsigned hello_write(struct selector_key *key);
+
+/**
+ * Close hello write resources
+ * @param state
+ * @param key
+ */
+void hello_write_close(const unsigned state, struct selector_key *key);
 
 #endif //PROYECTO_PROTOS_HELLO_H
