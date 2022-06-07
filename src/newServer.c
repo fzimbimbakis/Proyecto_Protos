@@ -13,7 +13,7 @@
 #include <netdb.h>
 #include <fcntl.h>
 //#include "socks5.h"
-#include "args.h"
+#include "../include/args.h"
 #include "selector.h"
 //#include "socks5nio.h"
 

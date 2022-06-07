@@ -24,7 +24,7 @@
 #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
 #include "../include/buffer.h"
 #include "../include/selector.h"
-#include "args.h"
+#include "../include/args.h"
 #define BUFFER_SIZE 10
 #define MAX_CONNECTIONS_QUEUE 20
 #define IP_FOR_REQUESTS "127.0.0.1"
