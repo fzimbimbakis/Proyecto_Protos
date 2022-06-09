@@ -46,6 +46,6 @@ struct socks5args {
  *          -1 si hubo error o una de las opciones es solo de imprimir a STDOUT.
  *          0 caso contrario
  */
-int parse_args(const int argc, const char **argv, struct socks5args *args);
+int parse_args(const int argc, char *const * argv, struct socks5args *args);
 
 #endif

@@ -80,7 +80,7 @@ usage(const char *progname) {
     return -1;
 }
 
-int parse_args(const int argc, const char **argv, struct socks5args *args) {
+int parse_args(const int argc, char *const * argv, struct socks5args *args) {
     memset(args, 0, sizeof(*args)); // sobre todo para setear en null los punteros de users
 
     //// Default values
