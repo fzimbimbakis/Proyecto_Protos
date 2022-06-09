@@ -2,11 +2,25 @@
 #define PROYECTO_PROTOS_REQUEST_H
 
 
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
+#include "buffer.h"
+#include "selector.h"
+//#include "states.h"
+#include "socks5nio.h"
+#include "stm.h"
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "buffer.h"
+#include <netdb.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <pthread.h>
 
 #define MAX_FQDN_SIZE 0xFF
+#define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
 
 enum request_state
 {
@@ -63,9 +77,9 @@ typedef struct request_parser
 
     enum request_state state;
     //bytes que faltan leer
-    uint8_t n;
+    uint8_t remaining;
     //bytes leidos
-    uint8_t i;
+    uint8_t read;
 } request_parser;
 
 enum socks_reply_status
@@ -85,6 +99,83 @@ enum socks_reply_status
 /** inicializa el parser **/
 void request_parser_init(request_parser *p);
 
+/** cierra el parser **/
+void request_parser_close(struct request_parser* parser);
+
+/** inicializa el request_st **/
+void request_init(const unsigned state, struct selector_key *key);
+
+void request_close(const unsigned state, struct selector_key *key);
+
+/** lee el request enviado por el cliente
+ *
+ *  The SOCKS request is formed as follows:
+
+        +----+-----+-------+------+----------+----------+
+        |VER | CMD |  RSV  | ATYP | DST.ADDR | DST.PORT |
+        +----+-----+-------+------+----------+----------+
+        | 1  |  1  | X'00' |  1   | Variable |    2     |
+        +----+-----+-------+------+----------+----------+
+
+     Where:
+
+          o  VER    protocol version: X'05'
+          o  CMD
+             o  CONNECT X'01'
+             o  BIND X'02'
+             o  UDP ASSOCIATE X'03'
+          o  RSV    RESERVED
+          o  ATYP   address type of following address
+             o  IP V4 address: X'01'
+             o  DOMAINNAME: X'03'
+             o  IP V6 address: X'04'
+          o  DST.ADDR       desired destination address
+          o  DST.PORT desired destination port in network octet
+             order
+
+ */
+
+unsigned request_read(struct selector_key *key);
+
+
+/** manda la respuesta al respectivo request
+ *
+ *    +----+-----+-------+------+----------+----------+
+        |VER | REP |  RSV  | ATYP | BND.ADDR | BND.PORT |
+        +----+-----+-------+------+----------+----------+
+        | 1  |  1  | X'00' |  1   | Variable |    2     |
+        +----+-----+-------+------+----------+----------+
+
+     Where:
+
+          o  VER    protocol version: X'05'
+          o  REP    Reply field:
+             o  X'00' succeeded
+             o  X'01' general SOCKS server failure
+             o  X'02' connection not allowed by ruleset
+             o  X'03' Network unreachable
+             o  X'04' Host unreachable
+             o  X'05' Connection refused
+             o  X'06' TTL expired
+             o  X'07' Command not supported
+             o  X'08' Address type not supported
+             o  X'09' to X'FF' unassigned
+          o  RSV    RESERVED
+          o  ATYP   address type of following address
+             o  IP V4 address: X'01'
+             o  DOMAINNAME: X'03'
+             o  IP V6 address: X'04'
+          o  BND.ADDR       server bound address
+          o  BND.PORT       server bound port in network octet order
+ */
+unsigned request_write(struct selector_key *key);
+
+
+
+/** procesa el request ya parsead0 **/
+unsigned request_process(struct selector_key *key, struct request_st *d);
+
+
 /** entrega un byte al parser. Retorna true si se llego al final **/
 enum request_state request_parser_feed(request_parser *p, uint8_t b);
 
@@ -92,6 +183,18 @@ enum request_state request_parser_feed(request_parser *p, uint8_t b);
  * hasta que se termine de parsear
 **/
 enum request_state request_consume(buffer *b, request_parser *p, bool *error);
+
+/**
+ * TODO: pasarlas a connect.h
+ * @param key
+ * @param d
+ * @return
+ */
+unsigned request_connect(struct selector_key *key, struct request_st *d);
+unsigned request_connecting(struct selector_key *key);
+
+/** function to use on a thread to resolv dns without blocking**/
+void * request_resolv_blocking(void *data);
 
 bool request_is_done(const enum request_state state, bool *error);
 
@@ -102,8 +205,5 @@ int request_marshal(buffer *b, const enum socks_reply_status status, const enum 
 
 enum socks_reply_status errno_to_socks(int e);
 
-#include <netdb.h>
-#include <arpa/inet.h>
 
-enum socks_reply_status cmd_resolve(struct request *request, struct sockaddr **originaddr, socklen_t *originlen, int *domain);
 #endif //PROYECTO_PROTOS_REQUEST_H

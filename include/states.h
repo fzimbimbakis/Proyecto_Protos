@@ -16,7 +16,7 @@ typedef struct hello_st
     struct hello_parser * parser;
     /** Selected auth method */
     uint8_t method;
-} hello_st;
+}hello_st;
 
 /** Used by the USERPASS_READ and USERPASS_WRITE states */
 //typedef struct userpass_st
@@ -32,20 +32,17 @@ typedef struct hello_st
 //} userpass_st;
 
 /** Used by the REQUEST_READ, REQUEST_WRITE and REQUEST_RESOLV state */
-// TODO Borrar o completar esto
-enum socks5_response_status {
-    HOLA
-};
+
 typedef struct request_st
 {
     buffer *rb, *wb;
 
 
     struct request request;
-    struct request_parser parser;
+    struct request_parser* parser;
 
 
-    enum socks5_response_status status;
+    enum socks_reply_status status;
 
     struct sockaddr_storage *origin_addr;
     socklen_t *origin_addr_len;
@@ -77,5 +74,5 @@ typedef struct copy
     /** Pointer to the structure of the opposing copy state*/
     struct copy * other_copy;
 
-} copy_st;
+}copy_st;
 #endif //PROYECTO_PROTOS_STATES_H
