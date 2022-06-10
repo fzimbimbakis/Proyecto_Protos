@@ -3,6 +3,7 @@
 #include "buffer.h"
 #include "hello.h"
 #include "request.h"
+#include "myParser.h"
 
 //// Definición de variables para cada estado
 
@@ -19,17 +20,18 @@ typedef struct hello_st
 } hello_st;
 
 /** Used by the USERPASS_READ and USERPASS_WRITE states */
-//typedef struct userpass_st
-//{
+typedef struct userpass_st
+{
 /** Buffers used for IO */
-//buffer *rb, *wb;
-/** Pointer to hello parser */
-//struct up_req_parser parser;
+buffer *rb, *wb;
+/** Pointer to user-pass parser */
+struct parser * parser;
 /** Selected user */
 //uint8_t * user;
 /** Selected password */
 //uint8_t * password;
-//} userpass_st;
+uint8_t auth_result;
+} userpass_st;
 
 /** Used by the REQUEST_READ, REQUEST_WRITE and REQUEST_RESOLV state */
 // TODO Borrar o completar esto

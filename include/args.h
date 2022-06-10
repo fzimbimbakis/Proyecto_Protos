@@ -3,13 +3,9 @@
 
 #include <stdbool.h>
 #include <netinet/in.h>
-
-#define MAX_USERS 10
-
-struct users {
-    char *name;
-    char *pass;
-};
+#include "socks5nio.h"
+extern struct users users[MAX_USERS];
+extern int nusers;
 
 struct socks5args {
     char               *socks_addr;
@@ -34,7 +30,6 @@ struct socks5args {
 
     bool            disectors_enabled;
 
-    struct users    users[MAX_USERS];
 };
 
 /**
