@@ -40,7 +40,7 @@ request_init(const unsigned state, struct selector_key *key)
     d->parser->request =d->request;
     request_parser_init(d->parser);
     d->status= malloc(sizeof(enum socks_reply_status));
-    *(d->status)=status_general_socks_server_failure;
+    *(d->status)=status_succeeded;
     d->client_fd= &ATTACHMENT(key)->client_fd;
     d->origin_fd=&ATTACHMENT(key)->origin_fd;
 
@@ -66,7 +66,7 @@ unsigned request_read(struct selector_key *key)
     ssize_t n;
 
     ptr = buffer_write_ptr(b, &count); //trae el puntero de escritura
-    debug(etiqueta, 0, "Midle stage", key->fd);
+    debug(etiqueta, 0, "Middle stage", key->fd);
     n = recv(key->fd, ptr, count, 0);
     if (n > 0)
     {
@@ -291,11 +291,12 @@ unsigned request_write(struct selector_key *key)
     struct request_st *d = &ATTACHMENT(key)->client.request;
 
     buffer *b = d->wb;
-    unsigned ret = ERROR;
+    unsigned ret = REQUEST_WRITE;
     uint8_t *ptr;
     size_t count;
     ssize_t n;
     ptr = buffer_read_ptr(b, &count);
+    debug(etiqueta, count, "Writing to client", key->fd);
     n = send(key->fd, ptr, count, MSG_NOSIGNAL);
     if (n == -1)
     {
@@ -322,6 +323,7 @@ unsigned request_write(struct selector_key *key)
             }
         }
     }
+    debug(etiqueta, ret, "Finished stage", key->fd);
     return ret;
 }
 
@@ -366,16 +368,19 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
                     debug(etiqueta, 0, "FQDN", key->fd);
                     struct selector_key *k= malloc(sizeof (*key));
                     if(k==NULL){
+                        debug(etiqueta, 0, "Malloc error", key->fd);
                         ret=REQUEST_WRITE;
                         *(d->status)= status_general_socks_server_failure;
                         selector_set_interest_key(key, OP_WRITE);
                     }else{
                         memcpy(k,key, sizeof(*k));
                         if(-1 == pthread_create(&tid, 0, request_resolv_blocking, k)){
+                            debug(etiqueta, 0, "Error creating thread", key->fd);
                             ret=REQUEST_WRITE;
                             *(d->status)=status_general_socks_server_failure;
                             selector_set_interest_key(key, OP_WRITE);
                         }else{
+                            debug(etiqueta, 0, "Entering request resolv", key->fd);
                             ret=REQUEST_RESOLV;
                             selector_set_interest_key(key, OP_NOOP);
                         }
@@ -384,6 +389,7 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
                     break;
                 }
                 default: {
+                    // TODO Check implementation
                     ret = REQUEST_WRITE;
                     *(d->status) = status_address_type_not_supported;
                     selector_set_interest_key(key, OP_WRITE);
@@ -438,6 +444,8 @@ request_resolv_blocking(void *data){
 //TODO(facu)
 unsigned request_resolv_done(struct selector_key *key)
 {
+    char * etiqueta = "REQUEST RESOLV DONE";
+    debug(etiqueta, 0, "Stating stage", key->fd);
     /*struct request_st *d = &ATTACHMENT(key)->client.request;
     struct socks5 *s = ATTACHMENT(key);
 
@@ -490,5 +498,8 @@ unsigned request_resolv_done(struct selector_key *key)
         else {
             abort();
         }*/
-    return 0;
+//    selector_set_interest_key(key, OP_WRITE);
+
+    debug(etiqueta, 0, "Finishing stage", key->fd);
+    return REQUEST_CONNECTING;
 }

@@ -5,6 +5,7 @@
 #define FIXED_IP "127.0.0.1"
 #define FIXED_PORT 3000
 extern const struct fd_handler socks5_handler;
+/*
 void connecting_init(const unsigned state, struct selector_key *key){
     // TODO(bruno) Error handling
 
@@ -57,7 +58,7 @@ unsigned connecting_write(struct selector_key *key){
     debug(etiqueta, 0, "Se completo la conexión -> Cambio de estado a COPY", key->fd);
     // TODO FALTA EL LLAMADO A setsockopt
     //  De juan:   if (getsockopt(key->fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) Me tengo que fijar el error creo.
-    selector_set_interest_key(key, OP_NOOP);
+    selector_set_interest_key(key, OP_WRITE);
     struct socks5 * data = key->data;
     selector_register(key->s, data->origin_fd, &socks5_handler, OP_NOOP, data);
     debug(etiqueta, 0, "Finished stage", key->fd);
@@ -68,11 +69,11 @@ void connecting_close(const unsigned state, struct selector_key *key){
     debug(etiqueta, 0, "Starting stage", key->fd);
 
 }
+*/
 
 
 
-/**
- * #include <errno.h>
+ #include <errno.h>
 #include <string.h>
 #include "../../include/connecting.h"
 
@@ -105,14 +106,20 @@ enum socks_reply_status errno_to_socks(int e)
 
     return ret;
 }
-
-
-
-
+void connection(struct selector_key *key);
 void connecting_init(const unsigned state, struct selector_key *key){
+    struct socks5 * data = ATTACHMENT(key);
+    data->orig.conn.wb = &data->write_buffer;
+    data->orig.conn.client_fd = data->client_fd;
+    data->orig.conn.origin_fd = -1;
+    connection(key);
+}
+
+
+void connection(struct selector_key *key){
     // TODO(bruno) Error handling
     //bool error= false;
-    char * etiqueta = "CONNECTING INIT";
+    char * etiqueta = "CONNECTION";
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct socks5 * data = ATTACHMENT(key);
     int *fd= &data->origin_fd;
@@ -137,7 +144,7 @@ void connecting_init(const unsigned state, struct selector_key *key){
     }
 
     debug(etiqueta, 0, "Connecting socket for fixed destination", key->fd);
-    /*struct sockaddr_in address;
+    struct sockaddr_in address;
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = inet_addr(FIXED_IP);
@@ -160,13 +167,13 @@ if(SELECTOR_SUCCESS != st){
 goto fail;
 }
 
-const struct fd_handler socksv5 = {
-        .handle_read       = socksv5_passive_accept,
-        .handle_write      = socksv5_passive_accept,
-        .handle_close      = NULL, // nada que liberar
-};
+//const struct fd_handler socksv5 = {
+//        .handle_read       = socksv5_passive_accept,
+//        .handle_write      = socksv5_passive_accept,
+//        .handle_close      = NULL, // nada que liberar
+//};
 
-st= selector_register(key->s, *fd, &socksv5,
+st= selector_register(key->s, *fd, &socks5_handler,
                       OP_WRITE, key->data);
 if(SELECTOR_SUCCESS != st){
 //error=true;
@@ -191,69 +198,72 @@ unsigned connecting_read(struct selector_key *key){
 }
 
 int
-request_marshall(buffer* b,
-                 const enum socks_reply_status status){
+request_marshall(struct socks5* data){
     size_t count;
+    buffer* b=data->orig.conn.wb;
     uint8_t *buff= buffer_write_ptr(b, &count);
-
+    struct request_st * s = &data->client.request;
     if(count < 10)
         return -1;
 
     buff[0]=0x05;
-    buff[1]=status;
-    buff[2]=0x00;
-    buff[3]=socks_req_addrtype_ipv4;
-    buff[4]=0x00;
-    buff[5]=0x00;
-    buff[6]=0x00;
-    buff[7]=0x00;
-    buff[8]=0x00;
-    buff[9]=0x00;
-
-    buffer_write_adv(b, 10);
+    buff[1]=data->orig.conn.status;
+    buff[2]=0x00;//rsv
+    buff[3]=data->client.request.request->dest_addr_type;
+    
+    //// IPv4
+    if(s->request->dest_addr_type == socks_req_addrtype_ipv4) {
+        memcpy(buff + 4, ((uint8_t *) &(s->request->dest_addr.ipv4.sin_addr)), s->request->dest_addr.ipv4.sin_len);
+        buffer_write_adv(b, s->request->dest_addr.ipv4.sin_len + 4);
+    }
+    
+    //// IPv6
+    if(s->request->dest_addr_type == socks_req_addrtype_ipv6) {
+        memcpy(buff + 4, ((uint8_t *) &(s->request->dest_addr.ipv6.sin6_addr)), s->request->dest_addr.ipv6.sin6_len);
+        buffer_write_adv(b, 10);
+    }
+    
+    //// FQDN
+    if(s->request->dest_addr_type == socks_req_addrtype_domain) {
+//        buff[4] = s->request->dest_addr;
+//        memcpy(buff + 5, s->request->dest_addr.fqdn, );
+//        buffer_write_adv(b, 10);
+    }
 
     return 10;
 }
 
 
 unsigned connecting_write(struct selector_key *key){
+    char * etiqueta = "CONNECTING WRITE";
+    debug(etiqueta, 0, "Starting stage", key->fd);
     int error;
     socklen_t len= sizeof(error);
-    struct connecting *d= &ATTACHMENT(key)->orig.conn;
-
+//    struct connecting* d= &ATTACHMENT(key)->orig.conn;
+    struct socks5 * data = ATTACHMENT(key);
     if(getsockopt(key->fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
-        *d->status= status_general_socks_server_failure;
+        data->orig.conn.status = status_general_socks_server_failure;
     }else{
         if(error== 0){
-            *d->status=status_succeeded;
-            *d->origin_fd=key->fd;
+            data->orig.conn.status=status_succeeded;
+            data->orig.conn.origin_fd = key->fd;
         }else{
-            *d->status=errno_to_socks(error);
+            data->orig.conn.status = errno_to_socks(error);
         }
     }
-
-    if(-1 == request_marshall (d->wb, *d->status)){
-        *d->status=status_general_socks_server_failure;
+    int request_marshall_result = request_marshall (ATTACHMENT(key));
+    if(-1 == request_marshall_result){
+        (data->orig.conn.status)=status_general_socks_server_failure;
+        debug(etiqueta, request_marshall_result, "Error request marshall", key->fd);
         abort();
     }
 
     selector_status s=0;
-    s|= selector_set_interest(key->s, *d->client_fd, OP_WRITE);
+    s|= selector_set_interest(key->s, data->orig.conn.client_fd, OP_WRITE);
     s|= selector_set_interest_key(key, OP_NOOP);
 
+    debug(etiqueta, s, "Finished stage", key->fd);
     return SELECTOR_SUCCESS== s ? REQUEST_WRITE:ERROR;
-
-
-    char * etiqueta = "CONNECTING WRITE";
-    debug(etiqueta, 0, "Starting stage", key->fd);
-    //debug(etiqueta, 0, "Se completo la conexión -> Cambio de estado a COPY", key->fd);
-    // TODO FALTA EL LLAMADO A setsockopt
-    //  De juan:   if (getsockopt(key->fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) Me tengo que fijar el error creo.
-    selector_set_interest_key(key, OP_NOOP);
-    struct socks5 * data = key->data;
-    selector_register(key->s, data->origin_fd, &socks5_handler, OP_NOOP, data);
-    debug(etiqueta, 0, "Finished stage", key->fd);
-    return COPY;
 }
 
 //habria que borrarlo
@@ -261,4 +271,4 @@ void connecting_close(const unsigned state, struct selector_key *key){
     char * etiqueta = "CONNECTING CLOSE";
     debug(etiqueta, 0, "Starting stage", key->fd);
 }
- */
+

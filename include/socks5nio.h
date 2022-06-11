@@ -135,9 +135,9 @@ typedef struct request_st
 /** Used by REQUEST_CONNECTING */
 typedef struct connecting{
     buffer *wb;
-    const int *client_fd;
-    int *origin_fd;
-    enum socks_reply_status *status;
+    int client_fd;
+    int origin_fd;
+    enum socks_reply_status status;
 }connecting;
 
 /** Used by the COPY state */
