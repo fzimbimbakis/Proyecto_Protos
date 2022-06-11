@@ -48,9 +48,9 @@ static const struct state_definition client_statbl[] = {
         },
         {
                 .state = USERPASS_WRITE,
-//                .on_arrival = userpass_write_init,
-//                .on_departure = userpass_write_close,
-//                .on_write_ready = userpass_write,
+                .on_arrival = auth_write_init,
+                .on_write_ready = auth_write,
+                .on_departure = auth_write_close,
         },
         {
                 .state = REQUEST_READ,

@@ -38,6 +38,11 @@
  */
 
 /**
+ *  Sub-negotiation with USERNAME/PASSWORD method version
+ */
+#define USERPASS_METHOD_VERSION 0x01
+
+/**
  * auth_read_init
  * Initializes userpass_st variables
  * @param state
@@ -70,14 +75,14 @@ void auth_write_init(unsigned state, struct selector_key *key);
  * Checks authentication and wirtes answer to client
  * @param key
  */
-void auth_write(struct selector_key *key);
+unsigned auth_write( struct selector_key *key);
 /**
  * auth_write_close
  * Close resources
  * @param state
  * @param key
  */
-void auth_write_close(unsigned state, struct selector_key *key);
+void auth_write_close( unsigned state, struct selector_key *key);
 
 
 

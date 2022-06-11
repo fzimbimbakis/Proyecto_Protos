@@ -30,7 +30,7 @@ struct parser * parser;
 //uint8_t * user;
 /** Selected password */
 //uint8_t * password;
-uint8_t auth_result;
+//uint8_t auth_result;
 } userpass_st;
 
 /** Used by the REQUEST_READ, REQUEST_WRITE and REQUEST_RESOLV state */

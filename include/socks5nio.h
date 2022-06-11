@@ -127,6 +127,9 @@ typedef struct socks5 {
     /** siguiente en el pool */
     struct socks5 *next;
 
+    /** Authentication result **/
+    uint8_t authentication;
+
 }socks5;
 
 
