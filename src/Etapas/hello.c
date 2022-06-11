@@ -246,7 +246,8 @@ unsigned hello_write(struct selector_key *key)
             if(SELECTOR_SUCCESS== selector_set_interest_key(key, OP_READ)){
                 debug(etiqueta, 0, "Setting interest to read", key->fd);
                 // TODO CAMBIAR PARA VOLVER AL FLUJO NORMAL
-                ret= REQUEST_CONNECTING;
+                //ret= REQUEST_CONNECTING;
+                ret= REQUEST_READ;
             }else{
                 debug(etiqueta, 0, "Error, read buffer full", key->fd);
                 ret=ERROR;

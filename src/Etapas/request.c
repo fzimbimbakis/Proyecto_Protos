@@ -1,17 +1,19 @@
 #include <sys/errno.h>
 #include "../../include/request.h"
 
+#define IPV4_LEN 4
+#define IPV6_LEN 16
 
 void request_parser_init(struct request_parser *p)
 {
     p->state = request_version;
-    p->remaining = 0;
     p->read = 0;
+    p->remaining=0;
 }
 
 void request_parser_close(struct request_parser* parser){
     //TODO: chequear que se libere bien todo
-    free(parser->request);
+    //free(parser->request);
 }
 
 
@@ -28,14 +30,17 @@ void request_close(const unsigned state, struct selector_key *key){
 void
 request_init(const unsigned state, struct selector_key *key)
 {
+    char * etiqueta = "REQUEST INIT";
+    debug(etiqueta, 0, "Starting stage", key->fd);
     struct request_st *d = &ATTACHMENT(key)->client.request;
 //    // Adding the read buffer
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->wb= &(ATTACHMENT(key)->write_buffer);
     d->parser = malloc(sizeof(*(d->parser)));
-    d->parser->request =&d->request;
+    d->parser->request =d->request;
     request_parser_init(d->parser);
-    d->status=status_general_socks_server_failure;
+    d->status= malloc(sizeof(enum socks_reply_status));
+    *(d->status)=status_general_socks_server_failure;
     d->client_fd= &ATTACHMENT(key)->client_fd;
     d->origin_fd=&ATTACHMENT(key)->origin_fd;
 
@@ -48,6 +53,9 @@ request_init(const unsigned state, struct selector_key *key)
 // lee todos los bytes del mensaje de tipo 'request' e inicia su proceso
 unsigned request_read(struct selector_key *key)
 {
+
+    char * etiqueta = "REQUEST READ";
+    debug(etiqueta, 0, "Starting stage", key->fd);
     struct request_st *d = &ATTACHMENT(key)->client.request;
 
     buffer *b = d->rb;
@@ -57,19 +65,21 @@ unsigned request_read(struct selector_key *key)
     size_t count;
     ssize_t n;
 
-    ptr = buffer_write_ptr(b, &count);
+    ptr = buffer_write_ptr(b, &count); //trae el puntero de escritura
+    debug(etiqueta, 0, "Midle stage", key->fd);
     n = recv(key->fd, ptr, count, 0);
     if (n > 0)
     {
         buffer_write_adv(b, n);
         int st = request_consume(b, d->parser, &error);
-        if (request_is_done(st, 0))
+        if (request_is_done(st, &error))
         {
             ret = request_process(key, d);
         }
     }
     else
     {
+        debug(etiqueta, 0, "Error recv", key->fd);
         ret = ERROR;
     }
 
@@ -79,6 +89,8 @@ unsigned request_read(struct selector_key *key)
 
 enum request_state request_consume(buffer *b, struct request_parser *p, bool *error)
 {
+    char * etiqueta = "REQUEST CONSUME";
+    debug(etiqueta, 0, "Starting stage", 0);
     enum request_state st = p->state;
     bool finished = false;
     while (buffer_can_read(b) && !finished)
@@ -93,9 +105,189 @@ enum request_state request_consume(buffer *b, struct request_parser *p, bool *er
     return st;
 }
 
+static void remaining_set(request_parser *p, const int n)
+{
+    p->remaining = n;
+    p->read = 0;
+}
+
+static int remaining_is_done(request_parser *p)
+{
+    return p->read >= p->remaining;
+}
+
+
+static enum request_state version(uint8_t b)
+{
+    enum request_state next;
+    if (b == 0x05)
+    {
+        next = request_cmd;
+    }
+    else
+    {
+        next = request_error_unsupported_version;
+    }
+    return next;
+}
+
+static enum request_state cmd(request_parser *p, uint8_t b)
+{
+    enum request_state next;
+    if (b == socks_req_cmd_connect)
+    {
+        p->request->cmd = b;
+        next = request_rsv;
+    }
+    else
+    {
+        next = request_error_unsupported_cmd;
+    }
+    return next;
+}
+
+static enum request_state atyp(request_parser *p, uint8_t b)
+{
+    enum request_state next;
+    p->request->dest_addr_type = b;
+    switch (p->request->dest_addr_type)
+    {
+        case socks_req_addrtype_ipv4:
+            remaining_set(p, IPV4_LEN);
+            memset(&(p->request->dest_addr.ipv4), 0, sizeof(p->request->dest_addr.ipv4));
+            p->request->dest_addr.ipv4.sin_family = AF_INET;
+            next = request_dest_addr;
+            break;
+        case socks_req_addrtype_domain:
+            next = request_dest_addr_fqdn;
+            break;
+        case socks_req_addrtype_ipv6:
+            remaining_set(p, IPV6_LEN);
+            memset(&(p->request->dest_addr.ipv6), 0, sizeof(p->request->dest_addr.ipv6));
+            p->request->dest_addr.ipv6.sin6_family = AF_INET6;
+            next = request_dest_addr;
+            break;
+        default:
+            next = request_error_unsupported_type;
+            break;
+    }
+    return next;
+}
+
+static enum request_state dest_addr_fqdn(request_parser *p, uint8_t b)
+{
+    remaining_set(p, b); //The first
+    //octet of the address field contains the number of octets of name that
+    //follow.
+    p->request->dest_addr.fqdn[p->remaining - 1] = 0;
+    return request_dest_addr;
+}
+
+static enum request_state dest_addr(request_parser *p, uint8_t b)
+{
+    enum request_state next;
+    switch (p->request->dest_addr_type)
+    {
+        case socks_req_addrtype_ipv4:
+            ((uint8_t *)&(p->request->dest_addr.ipv4.sin_addr))[p->read++] = b;
+            break;
+        case socks_req_addrtype_domain:
+            p->request->dest_addr.fqdn[p->read++] = b;
+            break;
+        case socks_req_addrtype_ipv6:
+            ((uint8_t *)&(p->request->dest_addr.ipv6.sin6_addr))[p->read++] = b;
+            break;
+    }
+    if (remaining_is_done(p))
+    {
+        remaining_set(p, 2); //el puerto se manda en 2 bytes
+        p->request->dest_port = 0;
+        next = request_dest_port;
+    }
+    else
+    {
+        next = request_dest_addr;
+    }
+    return next;
+}
+
+static enum request_state dest_port(request_parser *p, uint8_t b)
+{
+    enum request_state next = request_dest_port;
+    *(((uint8_t *)&(p->request->dest_port)) + p->read) = b;
+    p->read++;
+    if (remaining_is_done(p))
+    {
+        next = request_done;
+    }
+    return next;
+}
+
+enum request_state request_parser_feed(request_parser *p, uint8_t b){
+    char * etiqueta = "REQUEST PARSER FEED";
+    debug(etiqueta, 0, "Starting stage", 0);
+    enum request_state following_state=request_error;
+    switch (p->state) {
+        case request_version:
+            debug(etiqueta, 0, "Version", 0);
+            following_state= version(b);
+            break;
+        case request_cmd:
+            debug(etiqueta, 0, "Cmd", 0);
+            following_state= cmd(p,b);
+            break;
+        case request_rsv:
+            debug(etiqueta, 0, "Rsv", 0);
+            following_state= request_atyp; //ignoro el campo rsv ya que siempre es '00'
+            break;
+        case request_atyp:
+            debug(etiqueta, 0, "Atyp", 0);
+            following_state= atyp(p,b);
+            break;
+        case request_dest_addr:
+            debug(etiqueta, 0, "Dest addr", 0);
+            following_state= dest_addr(p,b);
+            break;
+        case request_dest_addr_fqdn:
+            debug(etiqueta, 0, "Dest addr fqdn", 0);
+            following_state= dest_addr_fqdn(p,b);
+            break;
+        case request_dest_port:
+            debug(etiqueta, 0, "Dest port", 0);
+            following_state= dest_port(p,b);
+            break;
+        case request_done:
+            debug(etiqueta, 0, "Request done", 0);
+            following_state = request_done;
+            break;
+        case request_error_unsupported_version:
+            following_state = request_error_unsupported_version;
+            break;
+        case request_error_unsupported_cmd:
+            following_state = request_error_unsupported_cmd;
+            break;
+        case request_error_unsupported_type:
+            following_state = request_error_unsupported_type;
+            break;
+        case request_error:
+            following_state=request_error;
+            break;
+    }
+
+    p->state = following_state;
+    return p->state;
+}
+
+bool request_is_done(const enum request_state state, bool *error){
+    if(state == request_done && !*error)
+        return true;
+    return false;
+}
 //TODO: no se llega a ver completo en la clase
 unsigned request_write(struct selector_key *key)
 {
+    char * etiqueta = "REQUEST WRITE";
+    debug(etiqueta, 0, "Starting stage", key->fd);
     struct request_st *d = &ATTACHMENT(key)->client.request;
 
     buffer *b = d->wb;
@@ -136,45 +328,52 @@ unsigned request_write(struct selector_key *key)
 
 unsigned request_process(struct selector_key *key, struct request_st *d)
 {
+    char* etiqueta="REQUEST PROCESS";
+    debug(etiqueta, 0, "Starting stage", key->fd);
     unsigned ret;
     pthread_t tid;
 
-    switch (d->request.cmd)
+    switch (d->request->cmd)
     {
         case socks_req_cmd_connect: {
             // esto mejoraría enormemente de haber usado sockaddr_storage en el request
-            switch (d->request.dest_addr_type) {
+            switch (d->request->dest_addr_type) {
                 case socks_req_addrtype_ipv4: {
+                    debug(etiqueta, 0, "IPV4", key->fd);
                     ATTACHMENT(key)->origin_domain = AF_INET;
-                    d->request.dest_addr.ipv4.sin_port = d->request.dest_port;
-                    ATTACHMENT(key)->origin_addr_len = sizeof(d->request.dest_addr.ipv4);
-                    memcpy(&ATTACHMENT(key)->origin_addr, &d->request.dest_addr,
-                           sizeof(d->request.dest_addr.ipv4));
+                    d->request->dest_addr.ipv4.sin_port = d->request->dest_port;
+                    ATTACHMENT(key)->origin_addr_len = sizeof(d->request->dest_addr.ipv4);
+                    memcpy(&ATTACHMENT(key)->origin_addr, &d->request->dest_addr,
+                           sizeof(d->request->dest_addr.ipv4));
 
-                    ret = request_connect(key, d);
+                    //ret = request_connect(key, d);
+                    ret=REQUEST_CONNECTING;
                     break;
                 }
                 case socks_req_addrtype_ipv6: {
+                    debug(etiqueta, 0, "IPV6", key->fd);
                     ATTACHMENT(key)->origin_domain = AF_INET6;
-                    d->request.dest_addr.ipv6.sin6_port = d->request.dest_port;
-                    ATTACHMENT(key)->origin_addr_len = sizeof(d->request.dest_addr.ipv6);
-                    memcpy(&ATTACHMENT(key)->origin_addr, &d->request.dest_addr,
-                    sizeof(d->request.dest_addr.ipv6));
+                    d->request->dest_addr.ipv6.sin6_port = d->request->dest_port;
+                    ATTACHMENT(key)->origin_addr_len = sizeof(d->request->dest_addr.ipv6);
+                    memcpy(&ATTACHMENT(key)->origin_addr, &d->request->dest_addr,
+                    sizeof(d->request->dest_addr.ipv6));
 
-                    ret = request_connect(key, d);
+                    //ret = request_connect(key, d);
+                    ret=REQUEST_CONNECTING;
                     break;
                 }
                 case socks_req_addrtype_domain: {
+                    debug(etiqueta, 0, "FQDN", key->fd);
                     struct selector_key *k= malloc(sizeof (*key));
                     if(k==NULL){
                         ret=REQUEST_WRITE;
-                       d->status= status_general_socks_server_failure;
+                        *(d->status)= status_general_socks_server_failure;
                         selector_set_interest_key(key, OP_WRITE);
                     }else{
                         memcpy(k,key, sizeof(*k));
                         if(-1 == pthread_create(&tid, 0, request_resolv_blocking, k)){
                             ret=REQUEST_WRITE;
-                            d->status=status_general_socks_server_failure;
+                            *(d->status)=status_general_socks_server_failure;
                             selector_set_interest_key(key, OP_WRITE);
                         }else{
                             ret=REQUEST_RESOLV;
@@ -186,7 +385,7 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
                 }
                 default: {
                     ret = REQUEST_WRITE;
-                    d->status = status_address_type_not_supported;
+                    *(d->status) = status_address_type_not_supported;
                     selector_set_interest_key(key, OP_WRITE);
                 }
             }
@@ -196,8 +395,9 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
         case socks_req_cmd_bind:
         case socks_req_cmd_associate:
         default:
-            d->status = status_command_not_supported;
+            *(d->status)= status_command_not_supported;
             ret = REQUEST_WRITE;
+            selector_set_interest_key(key, OP_WRITE);
             break;
     }
 
@@ -222,9 +422,9 @@ request_resolv_blocking(void *data){
     };
 
     char buff[7];
-    snprintf(buff,sizeof(buff), "%d", ntohs(s->client.request.request.dest_port));
+    snprintf(buff,sizeof(buff), "%d", ntohs(s->client.request.request->dest_port));
 
-    getaddrinfo(s->client.request.request.dest_addr.fqdn, buff, &hints,
+    getaddrinfo(s->client.request.request->dest_addr.fqdn, buff, &hints,
                 &s->origin_resolution);
 
     selector_notify_block(key->s, key->fd);
@@ -234,39 +434,14 @@ request_resolv_blocking(void *data){
     return 0;
 }
 
-enum socks_reply_status errno_to_socks(int e)
-{
-    enum socks_reply_status ret = status_general_socks_server_failure;
-
-    switch (e)
-    {
-        case 0:
-            ret = status_succeeded;
-            break;
-        case ECONNREFUSED:
-            ret = status_connection_refused;
-            break;
-        case EHOSTUNREACH:
-            ret = status_host_unreachable;
-            break;
-        case ENETUNREACH:
-            ret = status_network_unreachable;
-            break;
-        case ETIMEDOUT:
-            ret = status_ttl_expired;
-            break;
-    }
-
-    return ret;
-}
-
 // procesa el resultado de la resolución de nombres
-/*static unsigned request_resolv_done(struct selector_key *key)
+//TODO(facu)
+unsigned request_resolv_done(struct selector_key *key)
 {
-    struct request_st *d = &ATTACHMENT(key)->client.request;
+    /*struct request_st *d = &ATTACHMENT(key)->client.request;
     struct socks5 *s = ATTACHMENT(key);
 
-    if (d->addr_resolv.cant_addr == 0)
+    if (d->o.cant_addr == 0)
     {
         if(d->addr_resolv.ip_type + 1 < IP_CANT_TYPES) {
             d->addr_resolv.ip_type++;
@@ -314,115 +489,6 @@ enum socks_reply_status errno_to_socks(int e)
         }
         else {
             abort();
-        }
+        }*/
     return 0;
-}*/
-
-
-unsigned
-request_connect(struct selector_key *key, struct request_st *d){
-    bool error= false;
-
-    enum socks_reply_status status= d->status;
-    int *fd=d->origin_fd;
-
-    *fd= socket(ATTACHMENT(key)->origin_domain, SOCK_STREAM, 0);
-
-    if(*fd==-1){
-        error=true;
-        goto finally;
-    }
-
-    if(selector_fd_set_nio(*fd) == -1){
-        goto finally;
-    }
-
-    if(-1 == connect(*fd, (const struct sockaddr*)&ATTACHMENT(key)->origin_addr,
-                     ATTACHMENT(key)->origin_addr_len)){
-        if(errno == EINPROGRESS){
-            selector_status st= selector_set_interest_key(key, OP_NOOP);
-            if(SELECTOR_SUCCESS != st){
-                error=true;
-                goto finally;
-            }
-
-            const struct fd_handler socksv5 = {
-                    .handle_read       = socksv5_passive_accept,
-                    .handle_write      = NULL,
-                    .handle_close      = NULL, // nada que liberar
-            };
-
-            st= selector_register(key->s, *fd, &socksv5,
-                                  OP_WRITE, key->data);
-            if(SELECTOR_SUCCESS != st){
-                error=true;
-                goto finally;
-            }
-            ATTACHMENT(key)->references += 1;
-        }else{
-            status = errno_to_socks(errno);
-            error=true;
-            goto finally;
-
-            //TODO: seguir porque no se ve como sigue en la clase
-        }
-    }
-
-    finally:
-    return error ? ERROR : 0;
-    //return 0;
-}
-
-int
-request_marshall(buffer* b,
-                 const enum socks_reply_status status){
-    size_t count;
-    uint8_t *buff= buffer_write_ptr(b, &count);
-
-    if(count < 10)
-        return -1;
-
-    buff[0]=0x05;
-    buff[1]=status;
-    buff[2]=0x00;
-    buff[3]=socks_req_addrtype_ipv4;
-    buff[4]=0x00;
-    buff[5]=0x00;
-    buff[6]=0x00;
-    buff[7]=0x00;
-    buff[8]=0x00;
-    buff[9]=0x00;
-
-    buffer_write_adv(b, 10);
-
-    return 10;
-}
-
-unsigned request_connecting(struct selector_key *key){
-    int error;
-    socklen_t len= sizeof(error);
-    struct connecting *d= &ATTACHMENT(key)->orig.conn;
-
-    if(getsockopt(key->fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
-        *d->status= status_general_socks_server_failure;
-    }else{
-        if(error== 0){
-            *d->status=status_succeeded;
-            *d->origin_fd=key->fd;
-        }else{
-            *d->status=errno_to_socks(error);
-        }
-    }
-
-    if(-1 == request_marshall (d->wb, *d->status)){
-        *d->status=status_general_socks_server_failure;
-        abort();
-    }
-
-    selector_status s=0;
-    s|= selector_set_interest(key->s, *d->client_fd, OP_WRITE);
-    s|= selector_set_interest_key(key, OP_NOOP);
-
-    return SELECTOR_SUCCESS== s ? REQUEST_WRITE:ERROR;
-    //return ERROR;
 }

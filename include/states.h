@@ -50,7 +50,7 @@ typedef struct request_st
 
     const int *client_fd;
     int *origin_fd;
-} request_st;
+}request_st;
 
 /** Used by REQUEST_CONNECTING */
 typedef struct connecting{

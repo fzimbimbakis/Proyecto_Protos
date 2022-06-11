@@ -34,7 +34,7 @@ static const struct state_definition client_statbl[] = {
                 .on_departure = hello_read_close,
                 .on_read_ready = hello_read,
         },
-        {       .state = HELLO_WRITE,
+        {.state = HELLO_WRITE,
                 .on_arrival = hello_write_init,
                 .on_departure = hello_write_close,
                 .on_write_ready = hello_write
@@ -60,25 +60,23 @@ static const struct state_definition client_statbl[] = {
         },
         {
                 .state = REQUEST_RESOLV,
-//                .on_arrival = resolve_init,
-//                .on_departure = resolve_close,
-//                .on_read_ready = resolve_read,
-//                .on_write_ready = resolve_write,
+                .on_block_ready= request_resolv_done,
+
         },
         {
                 .state = REQUEST_CONNECTING,
                 .on_arrival = connecting_init,
-                .on_read_ready = connecting_read,
+ //               .on_read_ready = connecting_read,
                 .on_write_ready = connecting_write,
 //                .on_departure = connecting_close,
         },
         {
                 .state = REQUEST_WRITE,
-                .on_arrival = request_init,
-                .on_departure = request_close,
-                .on_read_ready = request_write,
+ //               .on_arrival = request_init,
+ //               .on_departure = request_close,
+                .on_write_ready = request_write,
         },
-        {   .state = COPY,
+        {       .state = COPY,
                 .on_arrival = copy_init,
                 .on_read_ready = copy_read,
                 .on_write_ready = copy_write,
@@ -91,7 +89,9 @@ static const struct state_definition client_statbl[] = {
         {
                 .state = ERROR,
                 // No now, no need to define any handlers, all in sockv5_done
-        }};
+        }
+
+};
 
 
 /**

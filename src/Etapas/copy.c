@@ -1,6 +1,6 @@
 #include "../../include/copy.h"
 #define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
-fd_interest copy_compute_interests(fd_selector s, struct copy *d)
+fd_interest copy_compute_interests(fd_selector s, struct copy_st *d)
 {
     char * etiqueta = "COPY COMPUTE INTERESTS";
     debug(etiqueta, 0, "Setting interest", d->fd);
@@ -33,7 +33,7 @@ void copy_init(const unsigned int state, struct selector_key *key)
     char * etiqueta = "COPY INIT";
     debug(etiqueta, 0, "Starting stage", key->fd);
 
-    struct copy *d = &ATTACHMENT(key)->client.copy;
+    struct copy_st *d = &ATTACHMENT(key)->client.copy;
     d->fd = ATTACHMENT(key)->client_fd;
     d->rb = &ATTACHMENT(key)->read_buffer;
     d->wb = &ATTACHMENT(key)->write_buffer;
@@ -71,7 +71,7 @@ unsigned copy_read(struct selector_key *key)
 {
     char * etiqueta = "COPY READ";
     debug(etiqueta, 0, "Starting stage", key->fd);
-    struct copy *d = copy_ptr(key);
+    struct copy_st *d = copy_ptr(key);
     if(d == NULL){
         debug(etiqueta, 0, "Failed getting copy ptr", key->fd);
         exit(EXIT_FAILURE);
@@ -119,7 +119,7 @@ unsigned copy_write(struct selector_key *key)
 {
     char * etiqueta = "COPY WRITE";
     debug(etiqueta, 0, "Starting stage", key->fd);
-    struct copy *d = copy_ptr(key);
+    struct copy_st *d = copy_ptr(key);
 
     assert(d->fd == key->fd);
     size_t size;

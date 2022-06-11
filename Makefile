@@ -1,4 +1,4 @@
-CFLAGS= -g -I./include --std=c11 -pedantic -pedantic-errors -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function -Wno-implicit-fallthrough -D_POSIX_C_SOURCE=200112L
+CFLAGS= -g -I./include --std=c11 -pedantic -pedantic-errors -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-implicit-fallthrough -D_POSIX_C_SOURCE=200112L
 
 CLIENT_C_FILES = src/client.o src/tcpClientUtil.o src/util.o src/logger.o
 
@@ -14,6 +14,7 @@ stm.o:				stm.h
 socks5nio.o:		socks5nio.h
 connecting.o:		connecting.h
 hello.o:			hello.h
+request.o:			request.h
 copy.o:				copy.h
 debug.o:			debug.h
 address_utils.o:	address_utils.h
