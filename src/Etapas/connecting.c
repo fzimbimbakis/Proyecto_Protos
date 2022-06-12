@@ -4,6 +4,9 @@
 
 #define FIXED_IP "127.0.0.1"
 #define FIXED_PORT 3000
+
+#define IPV4_LEN 4
+#define IPV6_LEN 16
 extern const struct fd_handler socks5_handler;
 /*
 void connecting_init(const unsigned state, struct selector_key *key){
@@ -200,37 +203,54 @@ unsigned connecting_read(struct selector_key *key){
 int
 request_marshall(struct socks5* data){
     size_t count;
+    ssize_t written;
     buffer* b=data->orig.conn.wb;
     uint8_t *buff= buffer_write_ptr(b, &count);
     struct request_st * s = &data->client.request;
-    if(count < 10)
-        return -1;
+
+    //TODO: habria que validar si queda espacio en el buffer para cada escritura con la variable count
+    /*if(count < 10)
+        return -1;*/
 
     buff[0]=0x05;
     buff[1]=data->orig.conn.status;
     buff[2]=0x00;//rsv
     buff[3]=data->client.request.request->dest_addr_type;
+
+    written=4;
+
+
     
     //// IPv4
     if(s->request->dest_addr_type == socks_req_addrtype_ipv4) {
-        memcpy(buff + 4, ((uint8_t *) &(s->request->dest_addr.ipv4.sin_addr)), s->request->dest_addr.ipv4.sin_len);
-        buffer_write_adv(b, s->request->dest_addr.ipv4.sin_len + 4);
+        memcpy(buff + 4, ((uint8_t *) &(s->request->dest_addr.ipv4.sin_addr)), IPV4_LEN);
+        written+=IPV4_LEN;
+        //buffer_write_adv(b, s->request->dest_addr.ipv4.sin_len + 4);
     }
     
     //// IPv6
     if(s->request->dest_addr_type == socks_req_addrtype_ipv6) {
-        memcpy(buff + 4, ((uint8_t *) &(s->request->dest_addr.ipv6.sin6_addr)), s->request->dest_addr.ipv6.sin6_len);
-        buffer_write_adv(b, 10);
+        memcpy(buff + 4, ((uint8_t *) &(s->request->dest_addr.ipv6.sin6_addr)),IPV6_LEN );
+        written+=IPV6_LEN;
+        //buffer_write_adv(b, s->request->dest_addr.ipv6.sin6_len + 4);
     }
     
     //// FQDN
     if(s->request->dest_addr_type == socks_req_addrtype_domain) {
-//        buff[4] = s->request->dest_addr;
-//        memcpy(buff + 5, s->request->dest_addr.fqdn, );
-//        buffer_write_adv(b, 10);
+        buff[4] = s->request->dest_addr.fqdn.size;
+        memcpy(buff + 5, s->request->dest_addr.fqdn.host,s->request->dest_addr.fqdn.size );
+        written+=s->request->dest_addr.fqdn.size;
+        //buffer_write_adv(b, s->request->dest_addr.fqdn.size + 4);
     }
 
-    return 10;
+    //buff= buffer_write_ptr(b, &count);
+
+    memcpy(buff + written, &s->request->dest_port , 2);
+    written +=2;
+
+    buffer_write_adv(b, written);
+
+    return written;
 }
 
 

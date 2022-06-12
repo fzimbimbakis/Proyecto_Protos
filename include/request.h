@@ -57,9 +57,14 @@ enum socks_atyp
 };
 
 
+struct sockaddr_fqdn{
+    char host[MAX_FQDN_SIZE];
+    ssize_t size;
+};
+
 union socks_addr
 {
-    char fqdn[MAX_FQDN_SIZE];
+    struct sockaddr_fqdn fqdn;
     struct sockaddr_in ipv4;
     struct sockaddr_in6 ipv6;
 };

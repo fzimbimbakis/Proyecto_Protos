@@ -179,7 +179,8 @@ static enum request_state dest_addr_fqdn(request_parser *p, uint8_t b)
     remaining_set(p, b); //The first
     //octet of the address field contains the number of octets of name that
     //follow.
-    p->request->dest_addr.fqdn[p->remaining - 1] = 0;
+    p->request->dest_addr.fqdn.host[p->remaining - 1] = 0;
+    p->request->dest_addr.fqdn.size=b;
     return request_dest_addr;
 }
 
@@ -192,7 +193,7 @@ static enum request_state dest_addr(request_parser *p, uint8_t b)
             ((uint8_t *)&(p->request->dest_addr.ipv4.sin_addr))[p->read++] = b;
             break;
         case socks_req_addrtype_domain:
-            p->request->dest_addr.fqdn[p->read++] = b;
+            p->request->dest_addr.fqdn.host[p->read++] = b;
             break;
         case socks_req_addrtype_ipv6:
             ((uint8_t *)&(p->request->dest_addr.ipv6.sin6_addr))[p->read++] = b;
@@ -307,7 +308,7 @@ unsigned request_write(struct selector_key *key)
         buffer_read_adv(b, n);
         if (!buffer_can_read(b))
         {
-            if (d->status ==status_succeeded)
+            if (*d->status ==status_succeeded)
             {
                 ret = COPY;
                 selector_set_interest(key->s, *d->client_fd, OP_READ);
@@ -430,7 +431,7 @@ request_resolv_blocking(void *data){
     char buff[7];
     snprintf(buff,sizeof(buff), "%d", ntohs(s->client.request.request->dest_port));
 
-    getaddrinfo(s->client.request.request->dest_addr.fqdn, buff, &hints,
+    getaddrinfo(s->client.request.request->dest_addr.fqdn.host, buff, &hints,
                 &s->origin_resolution);
 
     selector_notify_block(key->s, key->fd);
