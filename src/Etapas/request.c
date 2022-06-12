@@ -413,6 +413,7 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
 
 void *
 request_resolv_blocking(void *data){
+    char * etiqueta = "REQUEST RESOLV BLOCKING";
     struct selector_key *key =(struct selector_key *)data;
     struct socks5 *s= ATTACHMENT(key);
 
@@ -431,8 +432,18 @@ request_resolv_blocking(void *data){
     char buff[7];
     snprintf(buff,sizeof(buff), "%d", ntohs(s->client.request.request->dest_port));
 
-    getaddrinfo(s->client.request.request->dest_addr.fqdn.host, buff, &hints,
+    char buffer[s->client.request.request->dest_addr.fqdn.size + 1];
+    for (int i = 0; i < s->client.request.request->dest_addr.fqdn.size; ++i) {
+        buffer[i] = s->client.request.request->dest_addr.fqdn.host[i];
+    }
+    buffer[s->client.request.request->dest_addr.fqdn.size] = 0;
+    debug(etiqueta, 0, buffer, 0);
+    int getaddrinfo_result = getaddrinfo(s->client.request.request->dest_addr.fqdn.host, buff, &hints,
                 &s->origin_resolution);
+    if(getaddrinfo_result != 0) {
+        debug(etiqueta, 0, "getaddrinfo error:", 0);
+        debug(etiqueta, 0, (char *)gai_strerror(getaddrinfo_result), 0);
+    }
 
     selector_notify_block(key->s, key->fd);
 
@@ -447,59 +458,66 @@ unsigned request_resolv_done(struct selector_key *key)
 {
     char * etiqueta = "REQUEST RESOLV DONE";
     debug(etiqueta, 0, "Stating stage", key->fd);
-    /*struct request_st *d = &ATTACHMENT(key)->client.request;
-    struct socks5 *s = ATTACHMENT(key);
+    struct socks5 * data = ATTACHMENT(key);
 
-    if (d->o.cant_addr == 0)
-    {
-        if(d->addr_resolv.ip_type + 1 < IP_CANT_TYPES) {
-            d->addr_resolv.ip_type++;
-            return request_process(key, d);
-        }
-        else if(d->addr_resolv.status != status_succeeded) {
-            d->status = d->addr_resolv.status;
-        }
-        else if(d->status != status_ttl_expired) {
-            d->status = status_general_socks_server_failure;
-        }
+    //// Seteo current
+    struct addrinfo* current = data->origin_resolution_current = data->origin_resolution;
 
-        s->socks_info.status = d->status;
-        goto fail;
-    }
-    else
-    {
-        struct sockaddr_storage addr_st = d->addr_resolv.origin_addr_res[d->addr_resolv.cant_addr - 1];
-        if(addr_st.ss_family == AF_INET) {
-            struct sockaddr_in *addr = (struct sockaddr_in *)&addr_st;
-            s->origin_domain = addr->sin_family;
-            addr->sin_port = d->request.dest_port;
-        }
-        else if(addr_st.ss_family == AF_INET6) {
-            struct sockaddr_in6 *addr = (struct sockaddr_in6 *)&addr_st;
-            s->origin_domain = addr->sin6_family;
-            addr->sin6_port = d->request.dest_port;
-        }
-        else {
-            d->status = status_address_type_not_supported;
-            goto fail;
-        }
+    set_addr(key, current);
 
-        s->origin_addr_len = sizeof(struct sockaddr_storage);
-        memcpy(&s->origin_addr, &addr_st, s->origin_addr_len);
-        d->addr_resolv.cant_addr--;
-    }
+//    struct request_st *d = &ATTACHMENT(key)->client.request;
+//    struct socks5 *s = ATTACHMENT(key);
 
-    return request_connect(key, d);
-
-    fail:
-        if (-1 != request_marshal(s->client.request.wb, d->status, d->request.dest_addr_type, d->request.dest_addr, d->request.dest_port))
-        {
-            return REQUEST_WRITE;
-        }
-        else {
-            abort();
-        }*/
-//    selector_set_interest_key(key, OP_WRITE);
+//    if (d->o.cant_addr == 0)
+//    {
+//        if(d->addr_resolv.ip_type + 1 < IP_CANT_TYPES) {
+//            d->addr_resolv.ip_type++;
+//            return request_process(key, d);
+//        }
+//        else if(d->addr_resolv.status != status_succeeded) {
+//            d->status = d->addr_resolv.status;
+//        }
+//        else if(d->status != status_ttl_expired) {
+//            d->status = status_general_socks_server_failure;
+//        }
+//
+//        s->socks_info.status = d->status;
+//        goto fail;
+//    }
+//    else
+//    {
+//        struct sockaddr_storage addr_st = d->addr_resolv.origin_addr_res[d->addr_resolv.cant_addr - 1];
+//        if(addr_st.ss_family == AF_INET) {
+//            struct sockaddr_in *addr = (struct sockaddr_in *)&addr_st;
+//            s->origin_domain = addr->sin_family;
+//            addr->sin_port = d->request.dest_port;
+//        }
+//        else if(addr_st.ss_family == AF_INET6) {
+//            struct sockaddr_in6 *addr = (struct sockaddr_in6 *)&addr_st;
+//            s->origin_domain = addr->sin6_family;
+//            addr->sin6_port = d->request.dest_port;
+//        }
+//        else {
+//            d->status = status_address_type_not_supported;
+//            goto fail;
+//        }
+//
+//        s->origin_addr_len = sizeof(struct sockaddr_storage);
+//        memcpy(&s->origin_addr, &addr_st, s->origin_addr_len);
+//        d->addr_resolv.cant_addr--;
+//    }
+//
+//    //return request_connect(key, d);
+//    return REQUEST_CONNECTING;
+//
+//    fail:
+//        if (-1 != request_marshal(s->client.request.wb, d->status, d->request.dest_addr_type, d->request.dest_addr, d->request.dest_port))
+//        {
+//            return REQUEST_WRITE;
+//        }
+//        else {
+//            abort();
+//        }
 
     debug(etiqueta, 0, "Finishing stage", key->fd);
     return REQUEST_CONNECTING;

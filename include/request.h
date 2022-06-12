@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <pthread.h>
+#include "address_utils.h"
 
 #define MAX_FQDN_SIZE 0xFF
 #define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */

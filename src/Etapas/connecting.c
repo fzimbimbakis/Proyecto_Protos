@@ -2,8 +2,7 @@
 #include <string.h>
 #include "../../include/connecting.h"
 
-#define FIXED_IP "127.0.0.1"
-#define FIXED_PORT 3000
+
 
 #define IPV4_LEN 4
 #define IPV6_LEN 16
@@ -80,8 +79,7 @@ void connecting_close(const unsigned state, struct selector_key *key){
 #include <string.h>
 #include "../../include/connecting.h"
 
-#define FIXED_IP "127.0.0.1"
-#define FIXED_PORT 3000
+
 extern const struct fd_handler socks5_handler;
 
 enum socks_reply_status errno_to_socks(int e)
@@ -109,88 +107,82 @@ enum socks_reply_status errno_to_socks(int e)
 
     return ret;
 }
+
 void connection(struct selector_key *key);
+
 void connecting_init(const unsigned state, struct selector_key *key){
+    char * etiqueta = "CONNECTION";
+    debug(etiqueta, 0, "Starting stage", key->fd);
     struct socks5 * data = ATTACHMENT(key);
     data->orig.conn.wb = &data->write_buffer;
     data->orig.conn.client_fd = data->client_fd;
     data->orig.conn.origin_fd = -1;
+
+    int *fd= &data->origin_fd;
+
+    debug(etiqueta, 0, "Creating socket", key->fd);
+    *fd= socket(ATTACHMENT(key)->origin_domain, SOCK_STREAM, 0);
+
+    if(*fd < 0){
+        debug(etiqueta, *fd, "Error creating socket for origin", key->fd);
+        goto fail;
+    }else
+        debug(etiqueta, *fd, "Created socket for origin", key->fd);
+
+    //// Socket no bloqueante
+    int flag_setting = selector_fd_set_nio(*fd);
+    if(flag_setting == -1) {
+        debug(etiqueta, flag_setting, "Error setting socket flags", key->fd);
+        goto fail;
+    }
+
     connection(key);
+    return;
+
+    fail:
+    debug(etiqueta, 0, "Fail", 0);
+    fprintf(stderr, "%s\n",strerror(errno));
+    exit(EXIT_FAILURE);     //// TODO Exit?
 }
 
 
 void connection(struct selector_key *key){
     // TODO(bruno) Error handling
-    //bool error= false;
     char * etiqueta = "CONNECTION";
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct socks5 * data = ATTACHMENT(key);
+    debug(etiqueta, 0, "Connecting socket to origin", key->fd);
     int *fd= &data->origin_fd;
-    //// Me conecto al destino fijo
-    debug(etiqueta, 0, "Creating socket", key->fd);
+    int connectResult = connect(*fd, (const struct sockaddr*)&ATTACHMENT(key)->origin_addr, ATTACHMENT(key)->origin_addr_len);
 
-    //const int D_new_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    *fd= socket(ATTACHMENT(key)->origin_domain, SOCK_STREAM, 0);
-    if(*fd < 0){
-        debug(etiqueta, *fd, "Error creating socket for fixed destination", key->fd);
-        //error=true;
-        goto fail;
-    }else
-        debug(etiqueta, *fd, "Created socket for fixed destination", key->fd);
-    //// Socket no bloqueante
-    int flag_setting = selector_fd_set_nio(*fd);
-    if(flag_setting == -1) {
-        debug(etiqueta, flag_setting, "Error setting socket flags", key->fd);
-        // TODO(bruno) Ver que se hace acá
-        //error=true;
+    if(connectResult != 0 && errno != EINPROGRESS){
+        debug(etiqueta, connectResult, "Connection socket for fixed destination failed", key->fd);
+        *data->client.request.status = errno_to_socks(errno);
         goto fail;
     }
 
-    debug(etiqueta, 0, "Connecting socket for fixed destination", key->fd);
-    struct sockaddr_in address;
-    memset(&address, 0, sizeof(address));
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = inet_addr(FIXED_IP);
-    address.sin_port = htons(FIXED_PORT);
-int connectResult = connect(*fd, (const struct sockaddr*)&ATTACHMENT(key)->origin_addr,
-                            ATTACHMENT(key)->origin_addr_len);
-//connect(D_new_socket, (struct sockaddr*)&address, sizeof(address));
-if(connectResult != 0 && errno != EINPROGRESS){
-debug(etiqueta, connectResult, "Connection socket for fixed destination failed", key->fd);
-//error=true;
-*data->client.request.status = errno_to_socks(errno);
-goto fail;
-}
-debug(etiqueta, connectResult, "Me suscribo a escritura para esperar que se complete la conexión", key->fd);
-//selector_set_interest(key->s, key->fd, OP_WRITE);
+    selector_status st= selector_set_interest_key(key, OP_NOOP);
+    if(SELECTOR_SUCCESS != st){
+        debug(etiqueta, st, "Error setting interest", key->fd);
+        goto fail;
+    }
 
-selector_status st= selector_set_interest_key(key, OP_NOOP);
-if(SELECTOR_SUCCESS != st){
-//error=true;
-goto fail;
-}
+    debug(etiqueta, connectResult, "Me suscribo a escritura para esperar que se complete la conexión", key->fd);
+    st= selector_register(key->s, *fd, &socks5_handler,OP_WRITE, key->data);
+    if(SELECTOR_SUCCESS != st){
+        debug(etiqueta, st, "Error setting interest", key->fd);
+        goto fail;
+    }
 
-//const struct fd_handler socksv5 = {
-//        .handle_read       = socksv5_passive_accept,
-//        .handle_write      = socksv5_passive_accept,
-//        .handle_close      = NULL, // nada que liberar
-//};
+    ATTACHMENT(key)->references += 1;
 
-st= selector_register(key->s, *fd, &socks5_handler,
-                      OP_WRITE, key->data);
-if(SELECTOR_SUCCESS != st){
-//error=true;
-goto fail;
-}
-ATTACHMENT(key)->references += 1;
+    debug(etiqueta, 0, "Finished stage", key->fd);
+    return;
 
-debug(etiqueta, 0, "Finished stage", key->fd);
-return;
-
-fail:
-debug(etiqueta, 0, "Fail", 0);
-fprintf(stderr, "%s\n",strerror(errno));
-exit(EXIT_FAILURE);
+    fail:
+        debug(etiqueta, 0, "Fail", 0);
+        fprintf(stderr, "%s\n",strerror(errno));
+        exit(EXIT_FAILURE);     //// TODO Exit?
 }
 
 //habria que borrarlo
@@ -203,54 +195,61 @@ unsigned connecting_read(struct selector_key *key){
 int
 request_marshall(struct socks5* data){
     size_t count;
-    ssize_t written;
+//    ssize_t written;
     buffer* b=data->orig.conn.wb;
     uint8_t *buff= buffer_write_ptr(b, &count);
-    struct request_st * s = &data->client.request;
+//    struct request_st * s = &data->client.request;
 
     //TODO: habria que validar si queda espacio en el buffer para cada escritura con la variable count
-    /*if(count < 10)
-        return -1;*/
+    if(count < 10)
+        return -1;
 
     buff[0]=0x05;
     buff[1]=data->orig.conn.status;
     buff[2]=0x00;//rsv
-    buff[3]=data->client.request.request->dest_addr_type;
+    buff[3]=socks_req_addrtype_ipv4;
+    buff[4]=0x00;
+    buff[5]=0x00;
+    buff[6]=0x00;
+    buff[7]=0x00;
+    buff[8]=0x00;
+    buff[9]=0x00;
 
-    written=4;
+//
+//    written=4;
+//
+//
+//
+//    //// IPv4
+//    if(s->request->dest_addr_type == socks_req_addrtype_ipv4) {
+//        memcpy(buff + 4, ((uint8_t *) &(s->request->dest_addr.ipv4.sin_addr)), IPV4_LEN);
+//        written+=IPV4_LEN;
+//        //buffer_write_adv(b, s->request->dest_addr.ipv4.sin_len + 4);
+//    }
+//
+//    //// IPv6
+//    if(s->request->dest_addr_type == socks_req_addrtype_ipv6) {
+//        memcpy(buff + 4, ((uint8_t *) &(s->request->dest_addr.ipv6.sin6_addr)),IPV6_LEN );
+//        written+=IPV6_LEN;
+//        //buffer_write_adv(b, s->request->dest_addr.ipv6.sin6_len + 4);
+//    }
+//
+//    //// FQDN
+//    if(s->request->dest_addr_type == socks_req_addrtype_domain) {
+//        buff[4] = s->request->dest_addr.fqdn.size;
+//        memcpy(buff + 5, s->request->dest_addr.fqdn.host,s->request->dest_addr.fqdn.size );
+//        written+=s->request->dest_addr.fqdn.size;
+//        //buffer_write_adv(b, s->request->dest_addr.fqdn.size + 4);
+//    }
+//
+//    //buff= buffer_write_ptr(b, &count);
+//
+//    memcpy(buff + written, &s->request->dest_port , 2);
+//    written +=2;
 
+    buffer_write_adv(b, 10);
 
-    
-    //// IPv4
-    if(s->request->dest_addr_type == socks_req_addrtype_ipv4) {
-        memcpy(buff + 4, ((uint8_t *) &(s->request->dest_addr.ipv4.sin_addr)), IPV4_LEN);
-        written+=IPV4_LEN;
-        //buffer_write_adv(b, s->request->dest_addr.ipv4.sin_len + 4);
-    }
-    
-    //// IPv6
-    if(s->request->dest_addr_type == socks_req_addrtype_ipv6) {
-        memcpy(buff + 4, ((uint8_t *) &(s->request->dest_addr.ipv6.sin6_addr)),IPV6_LEN );
-        written+=IPV6_LEN;
-        //buffer_write_adv(b, s->request->dest_addr.ipv6.sin6_len + 4);
-    }
-    
-    //// FQDN
-    if(s->request->dest_addr_type == socks_req_addrtype_domain) {
-        buff[4] = s->request->dest_addr.fqdn.size;
-        memcpy(buff + 5, s->request->dest_addr.fqdn.host,s->request->dest_addr.fqdn.size );
-        written+=s->request->dest_addr.fqdn.size;
-        //buffer_write_adv(b, s->request->dest_addr.fqdn.size + 4);
-    }
-
-    //buff= buffer_write_ptr(b, &count);
-
-    memcpy(buff + written, &s->request->dest_port , 2);
-    written +=2;
-
-    buffer_write_adv(b, written);
-
-    return written;
+    return 10;
 }
 
 
@@ -259,18 +258,32 @@ unsigned connecting_write(struct selector_key *key){
     debug(etiqueta, 0, "Starting stage", key->fd);
     int error;
     socklen_t len= sizeof(error);
-//    struct connecting* d= &ATTACHMENT(key)->orig.conn;
+
     struct socks5 * data = ATTACHMENT(key);
+
     if(getsockopt(key->fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
+        //// TODO Ver de vuelta esto
         data->orig.conn.status = status_general_socks_server_failure;
+        if(data->origin_resolution_current->ai_next==NULL){
+            data->orig.conn.status = status_general_socks_server_failure;
+            return REQUEST_WRITE;
+        }
+    debug(etiqueta, 0, "Next addr", key->fd);
+        data->origin_resolution_current=data->origin_resolution_current->ai_next;
+        set_addr(key, data->origin_resolution_current);
+        connection(key);
+        return REQUEST_CONNECTING;
+
     }else{
         if(error== 0){
             data->orig.conn.status=status_succeeded;
             data->orig.conn.origin_fd = key->fd;
         }else{
+            debug(etiqueta, 0, "ERRNO TO SOCKS", key->fd);
             data->orig.conn.status = errno_to_socks(error);
         }
     }
+
     int request_marshall_result = request_marshall (ATTACHMENT(key));
     if(-1 == request_marshall_result){
         (data->orig.conn.status)=status_general_socks_server_failure;

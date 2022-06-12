@@ -4,6 +4,7 @@
 #include "debug.h"
 #include "socks5nio.h"
 #include "stm.h"
+#include "address_utils.h"
 //#include "states.h"
 /**
  * Etapa de conexión
