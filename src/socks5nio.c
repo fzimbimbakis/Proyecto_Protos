@@ -68,7 +68,7 @@ static const struct state_definition client_statbl[] = {
                 .on_arrival = connecting_init,
  //               .on_read_ready = connecting_read,
                 .on_write_ready = connecting_write,
-//                .on_departure = connecting_close,
+                .on_departure = connecting_close,
         },
         {
                 .state = REQUEST_WRITE,

@@ -3,8 +3,10 @@ CFLAGS= -g -I./include --std=c11 -pedantic -pedantic-errors -Wall -Wextra -Wno-u
 CLIENT_C_FILES = src/client.o src/tcpClientUtil.o src/util.o src/logger.o
 
 LDFLAGS = -lpthread -pthread
-SERVER_C_FILES =   src/selector.o src/stm.o  src/socks5nio.o src/Etapas/connecting.o src/Etapas/hello.o src/Etapas/request.o src/Etapas/copy.o src/debug.o src/address_utils.o src/socket_utils.o src/buffer.o src/args.o src/main.o
+SERVER_C_FILES =   src/selector.o src/stm.o  src/socks5nio.o src/Etapas/connecting.o src/Etapas/hello.o src/Etapas/request_parser.o src/Etapas/resolv.o src/Etapas/request.o src/Etapas/copy.o src/debug.o src/address_utils.o src/socket_utils.o src/buffer.o src/args.o src/main.o
 
+request_parser.o:	request_parser.h
+resolv.o:			resolv.h
 client.o:			client.h
 tcpClientUtil.o:	tcpClientUtil.h
 util.o:				util.h

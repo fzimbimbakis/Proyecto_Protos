@@ -30,12 +30,10 @@ void set_addr(struct selector_key * key, struct addrinfo * current){
 
     if(current->ai_family == AF_INET) {
         data->origin_domain = AF_INET;
-        data->client.request.request->dest_addr.ipv4.sin_port = data->client.request.request->dest_port;
     }
 
     if(current->ai_family == AF_INET6) {
         data->origin_domain = AF_INET6;
-        data->client.request.request->dest_addr.ipv6.sin6_port = data->client.request.request->dest_port;
     }
 
     data->origin_addr_len = current->ai_addrlen;

@@ -4,6 +4,7 @@
 #include <netdb.h>
 #include "selector.h"
 #include "hello.h"
+#include "request_parser.h"
 #include "request.h"
 //#include "states.h"
 #include "stm.h"
