@@ -199,10 +199,8 @@ static unsigned hello_process(const struct hello_st* d) {
 
     uint8_t m = d->method;
 //    const uint8_t r = (m == METHOD_NO_ACCEPTABLE_METHODS) ? 0xFF : 0x00;
+    debug(etiqueta, m, "Method selected", 0);
     if (-1 == hello_marshal(d->wb, m)) {
-        ret  = ERROR;
-    }
-    if (METHOD_NO_ACCEPTABLE_METHODS == m) {
         ret  = ERROR;
     }
     debug(etiqueta, ret, "Finished input from client processing", 0);
@@ -244,23 +242,31 @@ unsigned hello_write(struct selector_key *key)
     n= send(key->fd, ptr, count, MSG_NOSIGNAL);
 
     if(n==-1){
-        ret=ERROR;
-    }else{
-        buffer_read_adv(d->wb,n);
-        if(!buffer_can_read(d->wb)){
-            if(SELECTOR_SUCCESS== selector_set_interest_key(key, OP_READ)){
-                debug(etiqueta, 0, "Setting interest to read", key->fd);
-                ret= USERPASS_READ;
-            }else{
-                debug(etiqueta, 0, "Error, read buffer full", key->fd);
-                ret=ERROR;
-            }
+        debug(etiqueta, 0, "Error on send", key->fd);
+        debug(etiqueta, 0, "Finished stage", key->fd);
+        return ERROR;
+    }
+
+    buffer_read_adv(d->wb,n);
+    if(!buffer_can_read(d->wb)){
+        if(d->method == METHOD_NO_ACCEPTABLE_METHODS){
+            debug(etiqueta, 0, "No acceptable methods -> CLOSING CONNECTION", key->fd);
+            debug(etiqueta, 0, "Finished stage", key->fd);
+            return DONE;
+        }
+        if(SELECTOR_SUCCESS== selector_set_interest_key(key, OP_READ)){
+            debug(etiqueta, 0, "Succeed, setting interest to read", key->fd);
+            ret= USERPASS_READ;
+        }else{
+            debug(etiqueta, 0, "Error on selector set interest", key->fd);
+            ret=ERROR;
         }
     }
+
     debug(etiqueta, 0, "Finished stage", key->fd);
     return ret;
 }
 
 void hello_parser_close(struct hello_parser *p){
-    // TODO
+    /** empty **/
 }
