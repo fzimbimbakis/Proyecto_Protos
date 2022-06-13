@@ -24,3 +24,19 @@ int address_processing(char * address, struct sockaddr_in *addr, struct sockaddr
         return AF_INET;
     }
 }
+
+void set_addr(struct selector_key * key, struct addrinfo * current){
+    struct socks5 * data = ATTACHMENT(key);
+
+    if(current->ai_family == AF_INET) {
+        data->origin_domain = AF_INET;
+    }
+
+    if(current->ai_family == AF_INET6) {
+        data->origin_domain = AF_INET6;
+    }
+
+    data->origin_addr_len = current->ai_addrlen;
+    memcpy(&data->origin_addr, current->ai_addr, current->ai_addrlen);
+
+}
