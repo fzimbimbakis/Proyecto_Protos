@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include <netinet/in.h>
 #include "socks5nio.h"
-
+#include "request.h"
 /**
  * Handler del pedido de obtener la información de un FQDN
  * @param ptr

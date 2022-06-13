@@ -1,6 +1,17 @@
 #include <sys/errno.h>
 #include "../../include/request.h"
-
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
+#include "buffer.h"
+#include "selector.h"
+#include "states.h"
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <pthread.h>
+#include "request_parser.h"
+#include "resolv.h"
 #define IPV4_LEN 4
 #define IPV6_LEN 16
 
@@ -19,10 +30,11 @@ request_init(const unsigned state, struct selector_key *key)
     //// Parser
     d->parser = malloc(sizeof(*(d->parser)));
     request_parser_init(d->parser);
+    d->parser->request = malloc(sizeof(*d->parser->request));
 
     //// Status
-    d->status= malloc(sizeof(enum socks_reply_status));
-    *(d->status)=status_succeeded;
+//    d->status = malloc(sizeof(enum socks_reply_status));
+    d->status=status_succeeded;
 
     //// FDs
     d->client_fd= &ATTACHMENT(key)->client_fd;
@@ -131,9 +143,9 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
         return REQUEST_WRITE;
     }
 
-    int family;
-    uint16_t port;
-    struct sockaddr_storage * addr;
+//    int family;
+//    uint16_t port;
+//    struct sockaddr_storage * addr;
 
     // esto mejoraría enormemente de haber usado sockaddr_storage en el request
     switch (d->parser->request->dest_addr_type) {
@@ -196,7 +208,7 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
             }
             default: {
                 debug(etiqueta, 0, "Address type not supported -> REQUEST_WRITE to reply error to client", key->fd);
-                *(d->status)=status_address_type_not_supported;
+                data->orig.conn.status = status_address_type_not_supported;
                 request_marshall(data->orig.conn.status, &data->write_buffer);
                 selector_set_interest_key(key, OP_WRITE);
                 return REQUEST_WRITE;

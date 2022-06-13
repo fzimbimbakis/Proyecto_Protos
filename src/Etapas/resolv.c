@@ -1,3 +1,4 @@
+#include <string.h>
 #include "../../include/resolv.h"
 
 void *request_resolv_blocking(void *ptr) {
@@ -45,8 +46,8 @@ void *request_resolv_blocking(void *ptr) {
 
     debug(etiqueta, 0, "Starting getaddrinfo", 0);
     int getaddrinfo_result = getaddrinfo(buffer, buff, &hints, &data->origin_resolution);
-    free(buffer);
-    buffer = NULL;
+//    free(buffer);
+//    buffer = NULL;
     if (getaddrinfo_result != 0) {
         debug(etiqueta, 0, "getaddrinfo error:", 0);
         debug(etiqueta, 0, (char *) gai_strerror(getaddrinfo_result), 0);
@@ -55,8 +56,8 @@ void *request_resolv_blocking(void *ptr) {
     debug(etiqueta, getaddrinfo_result, "Notify block over", 0);
     selector_notify_block(key->s, key->fd);
 
-    free(key);
-    key = NULL;
+//    free(key);
+//    key = NULL;
     debug(etiqueta, 0, "Finished stage", 0);
     return 0;
 }

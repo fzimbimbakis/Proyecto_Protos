@@ -1,3 +1,4 @@
+#include <string.h>
 #include "../include/address_utils.h"
 int address_processing(char * address, struct sockaddr_in *addr, struct sockaddr_in6 *addr6, uint16_t port){
 

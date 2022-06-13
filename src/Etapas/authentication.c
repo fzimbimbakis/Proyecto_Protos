@@ -1,5 +1,11 @@
 #include "../../include/authentication.h"
-
+#include "selector.h"
+#include "myParser.h"
+#include "states.h"
+#include "socks5nio.h"
+#include "parser.h"
+#include <string.h>
+#include <stdlib.h>
 extern struct users users[MAX_USERS];
 extern int nusers;
 #define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
@@ -98,7 +104,7 @@ unsigned auth_read(struct selector_key *key) {
             debug(etiqueta, 0, "Setting selector interest to write", key->fd);
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE)) {
                 debug(etiqueta, 0, "Starting authorization data processing", 0);
-                ret = auth_process(d, key->data);
+                ret = auth_process(d, key);
             } else {
                 ret = ERROR;
             }
@@ -196,8 +202,7 @@ unsigned auth_write(struct selector_key *key) {
             }
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_READ)) {
                 debug(etiqueta, 0, "Setting interest to read", key->fd);
-                // TODO Change this
-                ret = REQUEST_CONNECTING;
+                ret = REQUEST_READ;
             } else {
                 debug(etiqueta, 0, "Error on selector", key->fd);
                 ret = ERROR;
@@ -244,9 +249,10 @@ uint8_t checkCredentials(uint8_t *username, uint8_t *password) {
  * @param data
  * @return
  */
-int auth_process(struct userpass_st *d, socks5 *data) {
+int auth_process(struct userpass_st *d, struct selector_key * key) {
     char *etiqueta = "AUTH PROCESS";
     debug(etiqueta, 0, "Starting authorization data processing", 0);
+    struct socks5 * data = key->data;
     uint8_t *username = d->parser->states[2]->result;
     uint8_t *password = d->parser->states[4]->result;
     data->authentication = checkCredentials(username, password);

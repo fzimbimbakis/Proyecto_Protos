@@ -1,30 +1,14 @@
 #ifndef PROYECTO_PROTOS_REQUEST_H
 #define PROYECTO_PROTOS_REQUEST_H
 
-
-#include <stdint.h>
-#include <stdbool.h>
-#include <string.h>
-#include <stdlib.h>
-#include "buffer.h"
-#include "selector.h"
-//#include "states.h"
-#include "socks5nio.h"
-#include "stm.h"
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include "buffer.h"
-#include <netdb.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <pthread.h>
-#include "address_utils.h"
-
 #define MAX_FQDN_SIZE 0xFF
 #define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
-#include "request_parser.h"
-#include "resolv.h"
 
+#include "buffer.h"
+#include "selector.h"
+#include "request_parser.h"
+#include "states.h"
+#include <sys/socket.h>
 /**
  * Posibles comados socks
  */
