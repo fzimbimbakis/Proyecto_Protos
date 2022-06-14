@@ -52,9 +52,12 @@ request_init(const unsigned state, struct selector_key *key)
 void request_close(const unsigned state, struct selector_key *key){
     char * etiqueta = "REQUEST CLOSE";
     debug(etiqueta, 0, "Starting stage", key->fd);
-//    struct request_st *d = &ATTACHMENT(key)->client.request;
-//    request_parser_close(d->parser);
-//    free(d->parser);
+    if(ATTACHMENT(key)->client.request.parser->request->dest_addr_type != socks_req_addrtype_domain){
+        struct request_st *d = &ATTACHMENT(key)->client.request;
+        request_parser_close(d->parser);
+        free(d->parser);
+        d->parser=NULL;
+    }
     debug(etiqueta, 0, "Finished stage", key->fd);
 }
 
@@ -197,6 +200,7 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
                     data->orig.conn.status = status_general_socks_server_failure;
                     request_marshall(data->orig.conn.status, &data->write_buffer);
                     selector_set_interest_key(key, OP_WRITE);
+                    free(k);
                     return REQUEST_WRITE;
                 }
 

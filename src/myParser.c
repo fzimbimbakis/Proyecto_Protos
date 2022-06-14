@@ -71,7 +71,7 @@ enum parser_state parser_feed(struct parser *p, uint8_t b)
                     break;
                 } else p->current = substate->state;
             } else{
-                substate->result = malloc(sizeof(uint8_t) * substate->size);
+                substate->result = malloc((sizeof(uint8_t) * substate->size)+1);
             }
 
 
@@ -87,6 +87,7 @@ enum parser_state parser_feed(struct parser *p, uint8_t b)
 
             if (substate->remaining <= 0)
             {
+                (substate->result)[(substate->size)] = 0;
                 debug(etiqueta, 0, "Finished long read", substate->remaining);
                 if (substate->check_function != NULL)
                 {

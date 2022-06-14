@@ -134,11 +134,15 @@ void connecting_close(const unsigned state, struct selector_key *key){
     char * etiqueta = "CONNECTING CLOSE";
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct request_st *d = &ATTACHMENT(key)->client.request;
-    request_parser_close(d->parser);
-    // TODO ver estos free porque rompen las cosas. Como que hacen el free antes de lo debido
-//    free(d->parser);
+    if(d->parser != NULL) {
+        // TODO ver estos free porque rompen las cosas. Como que hacen el free antes de lo debido
+        request_parser_close(d->parser);
+        free(d->parser);
+    }
 //    d->parser = NULL;
-    freeaddrinfo(ATTACHMENT(key)->origin_resolution);
+    if(ATTACHMENT(key)->origin_resolution != NULL) {
+        freeaddrinfo(ATTACHMENT(key)->origin_resolution);
+    }
     debug(etiqueta, 0, "Finished stage", key->fd);
 }
 

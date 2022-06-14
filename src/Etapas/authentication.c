@@ -46,7 +46,7 @@ void auth_read_init(unsigned state, struct selector_key *key) {
     d->parser->states[0] = malloc(sizeof(parser_substate));
     d->parser->states[0]->state = long_read;
     d->parser->states[0]->remaining = d->parser->states[0]->size = 1;
-    d->parser->states[0]->result = malloc(sizeof(uint8_t));
+    d->parser->states[0]->result = malloc(sizeof(uint8_t) + 1);
     d->parser->states[0]->check_function = checkVersion;
 
     //// Nread for username

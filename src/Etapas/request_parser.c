@@ -30,12 +30,12 @@ void request_parser_init(struct request_parser *parser) {
     parser->state = request_version;
     parser->read = 0;
     parser->remaining = 0;
-    parser->request = malloc(sizeof(parser->request));
+    parser->request = malloc(sizeof(struct request));//struct request
 }
 
 void request_parser_close(struct request_parser *parser) {
-//    free(parser->request);
-//    parser->request = NULL;
+    free(parser->request);
+    parser->request = NULL;
 }
 
 enum request_state request_parser_feed(struct request_parser *parser, uint8_t b) {
