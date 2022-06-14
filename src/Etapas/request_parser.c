@@ -177,7 +177,7 @@ static void ipv4_address_init(struct sockaddr_in *addr) {
 }
 
 static enum request_state dest_address_fqdn(request_parser *p, uint8_t b) {
-    if (b > MAX_FQDN_SIZE)
+    if (b > MAX_FQDN_SIZE-1)
         return request_error;
 
     remaining_set(p, b);

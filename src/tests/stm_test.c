@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <check.h>
 #include "../../include/selector.h"
-#include "../../include/stm.h"
+#include "stm.h"
 
 enum test_states {
     A,

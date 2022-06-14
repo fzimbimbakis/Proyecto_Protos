@@ -4,7 +4,7 @@
 #include <string.h>    /* memset */
 #include <errno.h>
 #include <getopt.h>
-#include "../include/debug.h"
+#include "debug.h"
 #include "../include/address_utils.h"
 #include "../include/args.h"
 

@@ -28,7 +28,7 @@
 #include "../include/selector.h"
 #include "../include/socks5nio.h"
 #include "../include/args.h"
-#include "../include/debug.h"
+#include "debug.h"
 #define SELECTOR_INITIAL_ELEMENTS 1024
 static bool done = false;
 

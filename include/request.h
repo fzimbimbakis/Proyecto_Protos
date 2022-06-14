@@ -2,13 +2,15 @@
 #define PROYECTO_PROTOS_REQUEST_H
 
 #define MAX_FQDN_SIZE 0xFF
-#define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
+//#define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
 
 #include "buffer.h"
 #include "selector.h"
 #include "request_parser.h"
 #include "states.h"
 #include <sys/socket.h>
+#include <netinet/in.h>
+
 /**
  * Posibles comados socks
  */

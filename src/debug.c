@@ -1,5 +1,6 @@
-#include "../include/debug.h"
+#include "debug.h"
 #include <stdio.h>
+FILE * debugging_file;
 static int d;
 void debug_init(int setting){
     d = setting;
