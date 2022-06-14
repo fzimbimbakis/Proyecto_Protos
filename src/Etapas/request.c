@@ -14,6 +14,7 @@
 #include "resolv.h"
 #define IPV4_LEN 4
 #define IPV6_LEN 16
+#define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
 
 //// INIT
 void
@@ -44,6 +45,7 @@ request_init(const unsigned state, struct selector_key *key)
     d->origin_addr=&ATTACHMENT(key)->origin_addr;
     d->origin_addr_len= &ATTACHMENT(key)->origin_addr_len;
     d->origin_domain=&ATTACHMENT(key)->origin_domain;
+    d->origin_port=&ATTACHMENT(key)->origin_port;
 
     debug(etiqueta, 0, "Finished stage", key->fd);
 }
@@ -140,8 +142,9 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
 
     if(d->parser->request->cmd != socks_req_cmd_connect){
         debug(etiqueta, 0, "COMMAND NOT SUPPORTED", key->fd);
-        data->orig.conn.status = status_general_socks_server_failure;
-        request_marshall(data->orig.conn.status, &data->write_buffer);
+        data->client.request.status=status_command_not_supported;
+        data->orig.conn.status = status_command_not_supported;
+        request_marshall(data->client.request.status, &data->write_buffer);
         selector_set_interest_key(key, OP_WRITE);
         return REQUEST_WRITE;
     }
@@ -219,6 +222,8 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
             }
 
     }
+
+    data->origin_port= d->parser->request->dest_port;
 
     return ret;
 }

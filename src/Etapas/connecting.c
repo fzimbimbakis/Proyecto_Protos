@@ -183,7 +183,27 @@ void connection(struct selector_key *key){
 
     debug(etiqueta, 0, "Connecting socket to origin", key->fd);
     int *fd= &data->origin_fd;
-    int connectResult = connect(*fd, (const struct sockaddr*)&ATTACHMENT(key)->origin_addr, ATTACHMENT(key)->origin_addr_len);
+    int connectResult;//= connect(*fd, (const struct sockaddr*)&ATTACHMENT(key)->origin_addr, ATTACHMENT(key)->origin_addr_len);
+
+
+
+     if(data->origin_domain == AF_INET6){
+        struct sockaddr_in6 * serv_addr = (struct sockaddr_in6 *) &(data->client.request.parser->request->dest_addr);
+        serv_addr->sin6_family=AF_INET6;
+        serv_addr->sin6_port=data->origin_port;
+
+        connectResult = connect(*fd, (const struct sockaddr*) serv_addr, sizeof(serv_addr));
+
+    }
+
+    if(data->origin_domain == AF_INET){
+        struct sockaddr_in * serv_addr = (struct sockaddr_in *) &(data->client.request.parser->request->dest_addr);
+        serv_addr->sin_family=AF_INET;
+        serv_addr->sin_port=data->origin_port;
+
+        connectResult = connect(*fd, (const struct sockaddr*) serv_addr, sizeof(serv_addr));
+    }
+
 
     if(connectResult != 0 && errno != EINPROGRESS){
         debug(etiqueta, connectResult, "Connection for origin socket failed", key->fd);

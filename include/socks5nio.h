@@ -100,6 +100,7 @@ typedef struct socks5 {
     /**informacion del origin server */
     struct sockaddr_storage origin_addr;
     socklen_t origin_addr_len;
+    in_port_t origin_port;
     int origin_domain;
     int origin_fd;
 

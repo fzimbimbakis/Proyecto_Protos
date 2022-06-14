@@ -16,7 +16,7 @@ struct parser {
     unsigned            state;
 
     /* evento que se retorna */
-    struct parser_event e1;
+    struct parser_ event e1;
     /* evento que se retorna */
     struct parser_event e2;
 };

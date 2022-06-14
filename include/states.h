@@ -62,6 +62,7 @@ typedef struct request_st
     struct sockaddr_storage *origin_addr;
     socklen_t *origin_addr_len;
     int *origin_domain;
+    in_port_t* origin_port;
 
     const int *client_fd;
     int *origin_fd;
