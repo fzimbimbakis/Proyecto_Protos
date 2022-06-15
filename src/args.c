@@ -95,8 +95,8 @@ int parse_args(const int argc, char *const * argv, struct socks5args *args) {
     args->mng_buffer_size = DEFAULT_BUFFER_SIZE;
 
     args->mng_addr = "127.0.0.1";
-    args->mng_addr_6 = "::";
-    args->mng_port = 8888;
+    args->mng_addr_6 = "::1";
+    args->mng_port = 8080;
     args->mng_family = AF_UNSPEC;
     memset(&args->mng_addr_info, 0, sizeof(args->mng_addr_info));
     memset(&args->mng_addr_info6, 0, sizeof(args->mng_addr_info6));

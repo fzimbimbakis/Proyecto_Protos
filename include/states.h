@@ -90,4 +90,47 @@ typedef struct copy_st
     struct copy_st * other_copy;
 
 }copy_st;
+
+//// MNG REQUEST
+
+enum mng_reply_status
+{
+    mng_status_succeeded = 0x00,
+    mng_status_server_error = 0x01,
+    mng_status_index_not_supported = 0x02,
+};
+
+enum mng_request_indexes
+{
+    mng_request_index_supported_indexes = 0x00,
+    mng_request_index_list_users = 0x01,
+    mng_request_index_historic_connections = 0x02,
+    mng_request_index_concurrent_connections = 0x03,
+    mng_request_index_max_concurrent_connections = 0x04,
+    mng_request_index_historic_bytes_transferred = 0x05,
+    mng_request_index_historic_auth_attempts = 0x06,
+    mng_request_index_historic_connections_attempts = 0x07,
+    mng_request_index_average_bytes_per_read = 0x08,
+    mng_request_index_average_bytes_per_write = 0x09,
+    mng_request_index_add_user = 0x0A,
+    mng_request_index_delete_user = 0x0B,
+    mng_request_index_disable_auth = 0x0C,
+    mng_request_index_disable_password_disectors = 0x0D,
+    mng_request_index_shutdown_server = 0xFF,
+};
+
+typedef struct mng_request_st
+{
+    buffer *rb, *wb;
+
+    struct parser * parser;
+
+    enum mng_reply_status status;
+
+    enum mng_request_indexes index;
+
+    const int *client_fd;
+
+}mng_request_st;
+
 #endif //PROYECTO_PROTOS_STATES_H
