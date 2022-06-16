@@ -97,7 +97,7 @@ static struct socks5 *mng_new(int client_fd) {
     if (ret == NULL) {
         goto finally;
     }
-
+    ret->isSocks = false;
     memset(ret, 0x00, sizeof(*ret));
 
     ret->client_fd = client_fd;

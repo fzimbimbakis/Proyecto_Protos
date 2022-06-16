@@ -119,7 +119,7 @@ static struct socks5* socks5_new(int client_fd){
     if(ret == NULL){
         goto finally;
     }
-
+    ret->isSocks = true;
     memset(ret, 0x00, sizeof(*ret));
 
     ret->origin_fd =-1;

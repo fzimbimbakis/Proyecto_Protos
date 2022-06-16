@@ -106,6 +106,9 @@ typedef struct socks5 {
     /** maquinas de estados */
     struct state_machine          stm;
 
+    /** MNG (false) or SOCKS (true) **/
+    bool isSocks;
+
     /** estados para el client_fd */
     union {
         struct hello_st           hello;

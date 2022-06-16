@@ -228,12 +228,29 @@ void auth_write_close(unsigned state, struct selector_key *key) {
 }
 
 /**
- * Auxiliar function for auth_process
+ * Auxiliar function for socks auth_process
  * @param username
  * @param password
  * @return
  */
 uint8_t checkCredentials(uint8_t *username, uint8_t *password) {
+    for (int i = 0; i < nusers; ++i) {
+        if (strcmp((char *) username, users[i].name) == 0) {
+            if (strcmp((char *) password, users[i].pass) == 0)
+                return 0x00;
+        }
+    }
+    return 0x01;
+}
+
+/**
+ * Auxiliar function for mng auth_process
+ * @param username
+ * @param password
+ * @return
+ */
+uint8_t checkMngCredentials(uint8_t *username, uint8_t *password) {
+    //// TODO: Change to real MNG credentials
     for (int i = 0; i < nusers; ++i) {
         if (strcmp((char *) username, users[i].name) == 0) {
             if (strcmp((char *) password, users[i].pass) == 0)
@@ -255,7 +272,12 @@ int auth_process(struct userpass_st *d, struct selector_key * key) {
     struct socks5 * data = key->data;
     uint8_t *username = d->parser->states[2]->result;
     uint8_t *password = d->parser->states[4]->result;
-    data->authentication = checkCredentials(username, password);
+
+    if(data->isSocks)
+        data->authentication = checkCredentials(username, password);
+    else
+        data->authentication = checkMngCredentials(username, password);
+
     if (data->authentication == 0x00)
         debug(etiqueta, 0, "Access granted", 0);
     else

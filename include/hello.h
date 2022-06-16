@@ -47,6 +47,9 @@
 //    The client and server then enter a method-specific sub-negotiation.
 **/
 
+#define SOCKS_VERSION 0x05
+#define MNG_VERSION 0x01
+
 static const uint8_t METHOD_NO_AUTHENTICATION_REQUIRED = 0x00;
 static const uint8_t METHOD_NO_ACCEPTABLE_METHODS = 0xFF;
 static const uint8_t METHOD_USERNAME_PASSWORD = 0x02;
@@ -71,6 +74,9 @@ typedef struct hello_parser{
 
     /** permite al usuario del parser almacenar sus datos **/
     void *data;
+
+    /** Current protocol version **/
+    uint8_t version;
 
     /********* zona privada *********/
     enum hello_state state;

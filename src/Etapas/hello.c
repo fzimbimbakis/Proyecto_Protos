@@ -14,7 +14,7 @@ enum hello_state hello_parser_feed(struct hello_parser *p, uint8_t b)
     switch (p->state)
     {
         case hello_version:
-            if (b == 0x05)
+            if (b == p->version)
             {
                 debug(etiqueta, b, "Hello version supported", 0);
                 p->state = hello_nmethods;
@@ -140,6 +140,9 @@ void hello_read_init(const unsigned state, struct selector_key *key) {
     d->parser = malloc(sizeof(*(d->parser)));
     d->parser->data = &(d->method);
     d->parser->on_authentication_method = on_hello_method;
+    if(ATTACHMENT(key)->isSocks)
+        d->parser->version = SOCKS_VERSION;
+    else d->parser->version = MNG_VERSION;
     hello_parser_init(d->parser);
     debug(etiqueta, 0, "Finished stage", key->fd);
 }
