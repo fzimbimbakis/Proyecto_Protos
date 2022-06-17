@@ -23,6 +23,7 @@ void mng_block(struct selector_key *key);
 
 void mng_close(struct selector_key *key);
 
+void mng_pool_destroy(void);
 
 /** maquina de estados general */
 enum mng_state {
@@ -37,7 +38,7 @@ enum mng_state {
      *   - HELLO_WRITE cuando estÃ¡ completo
      *   - ERROR       ante cualquier error (IO/parseo)
      */
-    HELLO_READ,
+    MNG_HELLO_READ,
 
     /**
      * envÃ­a la respuesta del `hello' al cliente.
@@ -50,11 +51,11 @@ enum mng_state {
      *   - REQUEST_READ cuando se enviaron todos los bytes
      *   - ERROR        ante cualquier error (IO/parseo)
      */
-    HELLO_WRITE,
+    MNG_HELLO_WRITE,
 
     //AUTH,
-    USERPASS_READ,
-    USERPASS_WRITE,
+    MNG_USERPASS_READ,
+    MNG_USERPASS_WRITE,
 
     // Requests
     MNG_REQUEST_READ_INDEX,

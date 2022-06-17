@@ -119,8 +119,8 @@ static struct socks5* socks5_new(int client_fd){
     if(ret == NULL){
         goto finally;
     }
-    ret->isSocks = true;
     memset(ret, 0x00, sizeof(*ret));
+    ret->isSocks = true;
 
     ret->origin_fd =-1;
     ret->client_fd= client_fd;
@@ -133,6 +133,10 @@ static struct socks5* socks5_new(int client_fd){
     ret->stm.current= &client_statbl[0];
     ret->stm.states= client_statbl;
     stm_init(&ret->stm);
+
+    //// Terminal states
+    ret->done_state = DONE;
+    ret->error_state = ERROR;
 
     // TODO El tamaño del buffer podría depender de la etapa
     debug(etiqueta, 0, "Init buffers", client_fd);
@@ -280,6 +284,7 @@ socksv5_passive_accept(struct selector_key *key) {
             socks5_destroy(ATTACHMENT(key));
         }
 
+        extern unsigned int metrics_concurrent_connections;
         void
         socksv5_done(struct selector_key* key) {
             const int fds[] = {
@@ -294,4 +299,5 @@ socksv5_passive_accept(struct selector_key *key) {
                     close(fds[i]);
                 }
             }
+            metrics_concurrent_connections -= 1;
         }

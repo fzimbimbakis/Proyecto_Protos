@@ -16,25 +16,26 @@ const struct fd_handler mng_handler = {
 /** definición de handlers para cada estado */
 static const struct state_definition client_mng[] = {
         {
-                .state = HELLO_READ,
+                .state = MNG_HELLO_READ,
                 .on_arrival = hello_read_init,
                 .on_departure = hello_read_close,
                 .on_read_ready = hello_read,
         },
-        {.state = HELLO_WRITE,
-                .on_arrival = hello_write_init,
-                .on_departure = hello_write_close,
-                .on_write_ready = hello_write
+        {
+            .state = MNG_HELLO_WRITE,
+            .on_arrival = hello_write_init,
+            .on_departure = hello_write_close,
+            .on_write_ready = hello_write
 
         },
         {
-                .state = USERPASS_READ,
+                .state = MNG_USERPASS_READ,
                 .on_arrival = auth_read_init,
                 .on_departure = auth_read_close,
                 .on_read_ready = auth_read,
         },
         {
-                .state = USERPASS_WRITE,
+                .state = MNG_USERPASS_WRITE,
                 .on_arrival = auth_write_init,
                 .on_write_ready = auth_write,
                 .on_departure = auth_write_close,
@@ -52,17 +53,17 @@ static const struct state_definition client_mng[] = {
                 .on_read_ready = mng_request_read,
         },
         {
-                .state = MNG_REQUEST_WRITE,
-                //               .on_arrival = request_init,
-                //               .on_departure = request_close,
-                .on_write_ready = mng_request_write,
+            .state = MNG_REQUEST_WRITE,
+            .on_arrival = mng_request_write_init,
+            .on_departure = mng_request_write_close,
+            .on_write_ready = mng_request_write,
         },
         {
-                .state = DONE,
+                .state = MNG_DONE,
                 // For now, no need to define any handlers, all in sockv5_done
         },
         {
-                .state = ERROR,
+                .state = MNG_ERROR,
                 // No now, no need to define any handlers, all in sockv5_done
         }
 
@@ -75,9 +76,9 @@ static const struct state_definition client_mng[] = {
  * contención.
  */
 
-static const unsigned max_pool = 50;
-static unsigned pool_size = 0;
-static struct socks5 *pool = 0;
+static const unsigned mng_max_pool = 50;
+static unsigned mng_pool_size = 0;
+static struct socks5 * mng_pool = 0;
 
 static const struct state_definition *mng_describe_states();
 
@@ -86,11 +87,11 @@ static struct socks5 *mng_new(int client_fd) {
     char *etiqueta = "MNG NEW";
     struct socks5 *ret;
 
-    if (pool == NULL) {
+    if (mng_pool == NULL) {
         ret = malloc(sizeof(*ret));
     } else {
-        ret = pool;
-        pool = pool->next;
+        ret = mng_pool;
+        mng_pool = mng_pool->next;
         ret->next = 0;
     }
 
@@ -105,12 +106,16 @@ static struct socks5 *mng_new(int client_fd) {
     ret->origin_fd = -1;
 
     //// INITIAL STATE
-    debug(etiqueta, HELLO_READ, "Setting first state", client_fd);
-    ret->stm.initial = HELLO_READ;
-    ret->stm.max_state = ERROR;
+    debug(etiqueta, MNG_HELLO_READ, "Setting first state", client_fd);
+    ret->stm.initial = MNG_HELLO_READ;
+    ret->stm.max_state = MNG_ERROR;
     ret->stm.current = &client_mng[0];
     ret->stm.states = client_mng;
     stm_init(&ret->stm);
+
+    //// Terminal states
+    ret->done_state = MNG_DONE;
+    ret->error_state = MNG_ERROR;
 
     // TODO El tamaño del buffer podría depender de la etapa
     debug(etiqueta, 0, "Init buffers", client_fd);
@@ -125,6 +130,7 @@ static struct socks5 *mng_new(int client_fd) {
 }
 
 /** Intenta aceptar la nueva conexión entrante*/
+static void mng_destroy(struct socks5 *s);
 void
 mng_passive_accept(struct selector_key *key) {
     char *etiqueta = "MNG PASSIVE ACCEPT";
@@ -164,7 +170,47 @@ mng_passive_accept(struct selector_key *key) {
     if (client != -1) {
         close(client);
     }
-    socks5_destroy(state);
+    mng_destroy(state);
+}
+
+
+
+/** realmente destruye */
+static void
+mng_destroy_(struct socks5* s) {
+    free(s);
+}
+
+/**
+ * destruye un  `struct socks5', tiene en cuenta las referencias
+ * y el pool de objetos.
+ */
+static void
+mng_destroy(struct socks5 *s) {
+    if(s == NULL) {
+        // nada para hacer
+    } else {
+        if (s->references == 1) {
+            if (mng_pool_size < mng_max_pool) {
+                s->next = mng_pool;
+                mng_pool = s;
+                mng_pool_size++;
+            } else {
+                mng_destroy_(s);
+            }
+        } else {
+            s->references -= 1;
+        }
+    }
+}
+
+void
+mng_pool_destroy(void) {
+    struct socks5 *next, *s;
+    for(s = mng_pool; s != NULL ; s = next) {
+        next = s->next;
+        free(s);
+    }
 }
 
 
@@ -179,7 +225,7 @@ mng_read(struct selector_key *key) {
     struct state_machine *stm = &ATTACHMENT(key)->stm;
     const enum mng_state st = stm_handler_read(stm, key);
 
-    if (ERROR == st || DONE == st) {
+    if (MNG_ERROR == st || MNG_DONE == st) {
         mng_done(key);
     }
 }
@@ -189,7 +235,7 @@ mng_write(struct selector_key *key) {
     struct state_machine *stm = &ATTACHMENT(key)->stm;
     const enum mng_state st = stm_handler_write(stm, key);
 
-    if (ERROR == st || DONE == st) {
+    if (MNG_ERROR == st || MNG_DONE == st) {
         mng_done(key);
     }
 }
@@ -199,19 +245,19 @@ mng_block(struct selector_key *key) {
     struct state_machine *stm = &ATTACHMENT(key)->stm;
     const enum mng_state st = stm_handler_block(stm, key);
 
-    if (ERROR == st || DONE == st) {
+    if (MNG_ERROR == st || MNG_DONE == st) {
         mng_done(key);
     }
 }
 
 void
 mng_close(struct selector_key *key) {
-    socks5_destroy(ATTACHMENT(key));
+    mng_destroy(ATTACHMENT(key));
 }
 
 void
 mng_done(struct selector_key *key) {
-    const int fds = ATTACHMENT(key)->client_fd, ;
+    const int fds = ATTACHMENT(key)->client_fd;
     if (fds != -1) {
         if (SELECTOR_SUCCESS != selector_unregister_fd(key->s, fds)) {
             abort();

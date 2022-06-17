@@ -14,6 +14,9 @@
 #include "resolv.h"
 #define IPV4_LEN 4
 #define IPV6_LEN 16
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
+#endif
 
 //// INIT
 void

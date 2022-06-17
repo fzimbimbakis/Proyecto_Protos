@@ -156,7 +156,7 @@ unsigned hello_read(struct selector_key *key);
  * @param d
  * @return
  */
-static unsigned hello_process(const struct hello_st* d);
+static int hello_process(const struct hello_st* d);
 
 /**
  * Close hello read resources

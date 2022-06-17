@@ -68,6 +68,8 @@ void * copy_ptr(struct selector_key *key){
     return NULL;
 }
 // lee bytes de un socket y los encola para ser escritos en otro socket
+extern unsigned int metrics_historic_byte_transfer;
+extern unsigned int metrics_average_bytes_per_read;
 unsigned copy_read(struct selector_key *key)
 {
     char * etiqueta = "COPY READ";
@@ -86,6 +88,10 @@ unsigned copy_read(struct selector_key *key)
     debug(etiqueta, 0, "Starting read", key->fd);
     uint8_t *ptr = buffer_write_ptr(b, &size);
     n = recv(key->fd, ptr, size, 0);
+
+    //// Add bytes read
+    metrics_average_bytes_per_read += n;
+
     debug(etiqueta, n, "Finished recv", key->fd);
     if (n <= 0)
     {
@@ -102,6 +108,10 @@ unsigned copy_read(struct selector_key *key)
     else
     {
         buffer_write_adv(b, n);
+
+        //// Add bytes to metrics
+        metrics_historic_byte_transfer += n;
+
         debug(etiqueta, n, "Buffer write adv", key->fd);
     }
     copy_compute_interests(key->s, d);
@@ -116,6 +126,7 @@ unsigned copy_read(struct selector_key *key)
 }
 
 // escribe bytes encolados
+extern unsigned int metrics_average_bytes_per_write;
 unsigned copy_write(struct selector_key *key)
 {
     char * etiqueta = "COPY WRITE";
@@ -131,6 +142,10 @@ unsigned copy_write(struct selector_key *key)
     debug(etiqueta, 0, "Starting write", key->fd);
     uint8_t *ptr = buffer_read_ptr(b, &size);
     n = send(key->fd, ptr, size, MSG_NOSIGNAL);
+
+    //// Add written bytes to metrics
+    metrics_average_bytes_per_write += n;
+
     if (n == -1)
     {
         shutdown(d->fd, SHUT_WR);

@@ -106,15 +106,15 @@ unsigned auth_read(struct selector_key *key) {
                 debug(etiqueta, 0, "Starting authorization data processing", 0);
                 ret = auth_process(d, key);
             } else {
-                ret = ERROR;
+                ret = ATTACHMENT(key)->error_state;
             }
         }
     } else {
         debug(etiqueta, n, "Error, nothing to read", key->fd);
-        ret = ERROR;
+        ret = ATTACHMENT(key)->error_state;
     }
     debug(etiqueta, error, "Finished stage", key->fd);
-    return error ? ERROR : ret;
+    return error ? ATTACHMENT(key)->error_state : ret;
 }
 
 
@@ -191,21 +191,21 @@ unsigned auth_write(struct selector_key *key) {
     ptr = buffer_read_ptr(d->wb, &count);
     n = send(key->fd, ptr, count, MSG_NOSIGNAL);
     if (n == -1) {
-        ret = ERROR;
+        ret = ATTACHMENT(key)->error_state;
     } else {
         buffer_read_adv(d->wb, n);
         debug(etiqueta, 0, "Finished writing auth result to client", key->fd);
         if (!buffer_can_read(d->wb)) {
             if(data->authentication != 0x00){
                 debug(etiqueta, 0, "Access denied -> Closing connection", key->fd);
-                return DONE;
+                return data->done_state;
             }
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_READ)) {
                 debug(etiqueta, 0, "Setting interest to read", key->fd);
                 ret = REQUEST_READ;
             } else {
                 debug(etiqueta, 0, "Error on selector", key->fd);
-                ret = ERROR;
+                ret = ATTACHMENT(key)->error_state;
             }
         }
     }
@@ -266,6 +266,7 @@ uint8_t checkMngCredentials(uint8_t *username, uint8_t *password) {
  * @param data
  * @return
  */
+extern unsigned int metrics_historic_auth_attempts;
 int auth_process(struct userpass_st *d, struct selector_key * key) {
     char *etiqueta = "AUTH PROCESS";
     debug(etiqueta, 0, "Starting authorization data processing", 0);
@@ -278,10 +279,11 @@ int auth_process(struct userpass_st *d, struct selector_key * key) {
     else
         data->authentication = checkMngCredentials(username, password);
 
-    if (data->authentication == 0x00)
+    if (data->authentication == 0x00) {
         debug(etiqueta, 0, "Access granted", 0);
-    else
-        debug(etiqueta, 0, "Access Denied", 0);
+        metrics_historic_auth_attempts += 1;
+    }else debug(etiqueta, 0, "Access Denied", 0);
+
     return USERPASS_WRITE;
 }
 

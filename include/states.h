@@ -98,6 +98,7 @@ enum mng_reply_status
     mng_status_succeeded = 0x00,
     mng_status_server_error = 0x01,
     mng_status_index_not_supported = 0x02,
+    mng_status_max_users_reached = 0x03
 };
 
 enum mng_request_indexes

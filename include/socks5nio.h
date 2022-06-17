@@ -105,6 +105,8 @@ typedef struct socks5 {
 
     /** maquinas de estados */
     struct state_machine          stm;
+    int error_state;
+    int done_state;
 
     /** MNG (false) or SOCKS (true) **/
     bool isSocks;

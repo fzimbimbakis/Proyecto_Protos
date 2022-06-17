@@ -29,9 +29,42 @@
 #include "../include/selector.h"
 #include "../include/socks5nio.h"
 #include "../include/args.h"
+#include "../include/mng_nio.h"
 #include "debug.h"
 #define SELECTOR_INITIAL_ELEMENTS 1024
 static bool done = false;
+#define DEFAULT_AUTH_METHOD 0x02
+uint8_t auth_method = DEFAULT_AUTH_METHOD;
+#define DEFAULT_PASSWORD_DISSECTORS_MODE 0
+uint8_t password_dissectors = DEFAULT_PASSWORD_DISSECTORS_MODE;
+
+//// METRICS        /////////////////////////////////////////////
+
+//// Historic connections
+unsigned int metrics_historic_connections = 0;
+
+//// Concurrent connections
+unsigned int metrics_concurrent_connections = 0;
+
+//// Max concurrent connections
+unsigned int metrics_max_concurrent_connections = 0;
+
+//// Historic byte transfer
+unsigned int metrics_historic_byte_transfer = 0;
+
+//// Historic auth attempts
+unsigned int metrics_historic_auth_attempts = 0;
+
+//// Historic connections attempts
+unsigned int metrics_historic_connections_attempts = 0;
+
+//// Average bytes per read
+unsigned int metrics_average_bytes_per_read = 0;
+
+//// Average bytes per write
+unsigned int metrics_average_bytes_per_write = 0;
+
+/////////////////////////////////////////////////////////////////
 
 static void
 sigterm_handler(const int signal) {
@@ -296,7 +329,7 @@ main(const int argc, const char **argv) {
         selector_destroy(selector);
     }
     selector_close();
-
+    mng_pool_destroy();
     socksv5_pool_destroy();
 
     /* Debugging */
