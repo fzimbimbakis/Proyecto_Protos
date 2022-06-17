@@ -15,6 +15,7 @@
 #define IPV4_LEN 4
 #define IPV6_LEN 16
 
+#define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
 //// INIT
 void
 request_init(const unsigned state, struct selector_key *key)
