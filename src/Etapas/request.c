@@ -19,6 +19,7 @@
 #define MSG_NOSIGNAL 0x2000  /* don't raise SIGPIPE */
 #endif
 
+#define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
 //// INIT
 void
 request_init(const unsigned state, struct selector_key *key)
