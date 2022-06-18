@@ -22,10 +22,10 @@ static const struct state_definition client_mng[] = {
                 .on_read_ready = hello_read,
         },
         {
-            .state = MNG_HELLO_WRITE,
-            .on_arrival = hello_write_init,
-            .on_departure = hello_write_close,
-            .on_write_ready = hello_write
+                .state = MNG_HELLO_WRITE,
+                .on_arrival = hello_write_init,
+                .on_departure = hello_write_close,
+                .on_write_ready = hello_write
 
         },
         {
@@ -53,10 +53,10 @@ static const struct state_definition client_mng[] = {
                 .on_read_ready = mng_request_read,
         },
         {
-            .state = MNG_REQUEST_WRITE,
-            .on_arrival = mng_request_write_init,
-            .on_departure = mng_request_write_close,
-            .on_write_ready = mng_request_write,
+                .state = MNG_REQUEST_WRITE,
+                .on_arrival = mng_request_write_init,
+                .on_departure = mng_request_write_close,
+                .on_write_ready = mng_request_write,
         },
         {
                 .state = MNG_DONE,
@@ -78,7 +78,7 @@ static const struct state_definition client_mng[] = {
 
 static const unsigned mng_max_pool = 50;
 static unsigned mng_pool_size = 0;
-static struct socks5 * mng_pool = 0;
+static struct socks5 *mng_pool = 0;
 
 static const struct state_definition *mng_describe_states();
 
@@ -131,6 +131,7 @@ static struct socks5 *mng_new(int client_fd) {
 
 /** Intenta aceptar la nueva conexión entrante*/
 static void mng_destroy(struct socks5 *s);
+
 void
 mng_passive_accept(struct selector_key *key) {
     char *etiqueta = "MNG PASSIVE ACCEPT";
@@ -174,10 +175,9 @@ mng_passive_accept(struct selector_key *key) {
 }
 
 
-
 /** realmente destruye */
 static void
-mng_destroy_(struct socks5* s) {
+mng_destroy_(struct socks5 *s) {
     free(s);
 }
 
@@ -187,7 +187,7 @@ mng_destroy_(struct socks5* s) {
  */
 static void
 mng_destroy(struct socks5 *s) {
-    if(s == NULL) {
+    if (s == NULL) {
         // nada para hacer
     } else {
         if (s->references == 1) {
@@ -207,7 +207,7 @@ mng_destroy(struct socks5 *s) {
 void
 mng_pool_destroy(void) {
     struct socks5 *next, *s;
-    for(s = mng_pool; s != NULL ; s = next) {
+    for (s = mng_pool; s != NULL; s = next) {
         next = s->next;
         free(s);
     }

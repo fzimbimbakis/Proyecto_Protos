@@ -108,25 +108,25 @@ unsigned mng_request_index_read(struct selector_key *key) {
 
         if (is_done(st, 0)) {
             debug(etiqueta, error, "Finished mng index consume", key->fd);
-                if (error) {
-                    debug(etiqueta, mng_status_index_not_supported,
-                          "MNG index no supported -> Change to write to notify client", 0);
-                    d->status = mng_status_index_not_supported;
-                    if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
+            if (error) {
+                debug(etiqueta, mng_status_index_not_supported,
+                      "MNG index no supported -> Change to write to notify client", 0);
+                d->status = mng_status_index_not_supported;
+                if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
+                    return MNG_ERROR;
+                ret = MNG_REQUEST_WRITE;
+            } else {
+                d->index = *d->parser->states[0]->result;
+                ret = process_mng_index(key, d->wb, d->index);
+                if (ret == MNG_REQUEST_WRITE) {
+                    if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_WRITE))
                         return MNG_ERROR;
-                    ret = MNG_REQUEST_WRITE;
-                } else {
-                    d->index = *d->parser->states[0]->result;
-                    ret = process_mng_index(key, d->wb, d->index);
-                    if(ret == MNG_REQUEST_WRITE){
-                        if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_WRITE))
-                            return MNG_ERROR;
-                    }
-                    if(ret == MNG_REQUEST_READ){
-                        if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_READ))
-                            return MNG_ERROR;
-                    }
                 }
+                if (ret == MNG_REQUEST_READ) {
+                    if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_READ))
+                        return MNG_ERROR;
+                }
+            }
         }
     } else {
         debug(etiqueta, n, "Error, nothing to read", key->fd);
@@ -208,7 +208,7 @@ unsigned mng_request_read(struct selector_key *key) {
             debug(etiqueta, error, "Finished mng consume", key->fd);
             debug(etiqueta, 0, "Setting selector interest to write", key->fd);
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE)) {
-                if(error){
+                if (error) {
                     ret = MNG_ERROR;
                     debug(etiqueta, 0, "Error parsing in MNG_REQUEST_READ", 0);
                 } else {
@@ -233,7 +233,7 @@ void mng_request_close(const unsigned state, struct selector_key *key) {
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct parser *p = ATTACHMENT(key)->client.mng_request.parser;
     for (int i = 0; i < p->size; ++i) {
-        if (p->states[i]->state == long_read) {
+        if (p->states[i]->state == long_read && p->states[i]->result != NULL) {
             free(p->states[i]->result);
         }
         free(p->states[i]);
@@ -245,17 +245,17 @@ void mng_request_close(const unsigned state, struct selector_key *key) {
 
 //// REQUEST WRITE
 
-void mng_request_write_init(unsigned state, struct selector_key * key){
-    char * etiqueta = "MNG REQUEST WRITE INIT";
+void mng_request_write_init(unsigned state, struct selector_key *key) {
+    char *etiqueta = "MNG REQUEST WRITE INIT";
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct mng_request_st *d = &ATTACHMENT(key)->client.mng_request;
-    d->rb                              = &(ATTACHMENT(key)->read_buffer);
-    d->wb                              = &(ATTACHMENT(key)->write_buffer);
+    d->rb = &(ATTACHMENT(key)->read_buffer);
+    d->wb = &(ATTACHMENT(key)->write_buffer);
     debug(etiqueta, 0, "Finished stage", key->fd);
 }
 
 unsigned mng_request_write(struct selector_key *key) {
-    char * etiqueta = "MNG REQUEST WRITE";
+    char *etiqueta = "MNG REQUEST WRITE";
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct mng_request_st *d = &ATTACHMENT(key)->client.mng_request;
 
@@ -267,16 +267,16 @@ unsigned mng_request_write(struct selector_key *key) {
 
     debug(etiqueta, 0, "Writing to client", key->fd);
     ptr = buffer_read_ptr(d->wb, &count);
-    n= send(key->fd, ptr, count, MSG_NOSIGNAL);
+    n = send(key->fd, ptr, count, MSG_NOSIGNAL);
 
-    if(n==-1){
+    if (n == -1) {
         debug(etiqueta, 0, "Error on send", key->fd);
         debug(etiqueta, 0, "Finished stage", key->fd);
         return MNG_ERROR;
     }
 
     buffer_read_adv(d->wb, n);
-    if(!buffer_can_read(d->wb)){        //// So no puedo leer más, termino el estado
+    if (!buffer_can_read(d->wb)) {        //// So no puedo leer más, termino el estado
         debug(etiqueta, d->status, "Finished writing to client", 0);
         return MNG_DONE;
     }
@@ -285,8 +285,8 @@ unsigned mng_request_write(struct selector_key *key) {
     return ret;
 }
 
-void mng_request_write_close(unsigned state, struct selector_key * key){
-    char * etiqueta = "MNG REQUEST WRITE CLOSE";
+void mng_request_write_close(unsigned state, struct selector_key *key) {
+    char *etiqueta = "MNG REQUEST WRITE CLOSE";
     debug(etiqueta, 0, "Starting stage", key->fd);
     //// Nothing to close or free
     debug(etiqueta, 0, "Finished stage", key->fd);
@@ -295,28 +295,28 @@ void mng_request_write_close(unsigned state, struct selector_key * key){
 //// METRICS        /////////////////////////////////////////////
 
 //// Historic connections
-extern unsigned int metrics_historic_connections;
+extern size_t metrics_historic_connections;
 
 //// Concurrent connections
-extern unsigned int metrics_concurrent_connections;
+extern size_t metrics_concurrent_connections;
 
 //// Max concurrent connections
-extern unsigned int metrics_max_concurrent_connections;
+extern size_t metrics_max_concurrent_connections;
 
 //// Historic byte transfer
-extern unsigned int metrics_historic_byte_transfer;
+extern size_t metrics_historic_byte_transfer;
 
 //// Historic auth attempts
-extern unsigned int metrics_historic_auth_attempts;
+extern size_t metrics_historic_auth_attempts;
 
 //// Historic connections attempts
-extern unsigned int metrics_historic_connections_attempts;
+extern size_t metrics_historic_connections_attempts;
 
 //// Average bytes per read
-extern unsigned int metrics_average_bytes_per_read;
+extern size_t metrics_average_bytes_per_read;
 
 //// Average bytes per write
-extern unsigned int metrics_average_bytes_per_write;
+extern size_t metrics_average_bytes_per_write;
 
 /////////////////////////////////////////////////////////////////
 
@@ -384,25 +384,26 @@ enum mng_state process_mng_index(struct selector_key *key, buffer *wb, enum mng_
 //// PROCESS PARAMETERS
 extern struct users users[MAX_USERS];
 extern int nusers;
-void addUser(uint8_t * username, uint8_t * password){
-    if(nusers >= MAX_USERS)
+
+void addUser(uint8_t *username, uint8_t *password) {
+    if (nusers >= MAX_USERS)
         return;
-    char * newUsername = malloc(strlen((char *)username));
-    char * newPassword = malloc(strlen((char *)password));
-    strcpy(newUsername, (char *)username);
-    strcpy(newPassword, (char *)password);
+    char *newUsername = malloc(strlen((char *) username) + 1);
+    char *newPassword = malloc(strlen((char *) password) + 1);
+    strcpy(newUsername, (char *) username);
+    strcpy(newPassword, (char *) password);
     users[nusers].name = newUsername;
-    users[nusers].pass = newPassword;
+    users[nusers++].pass = newPassword;
 }
 
-void deleteUser(uint8_t * username){
+void deleteUser(uint8_t *username) {
     bool deleted = false;
     for (int i = 0; i < nusers; ++i) {
-        if(deleted){
-            users[i-1].name = users[i].name;
-            users[i-1].pass = users[i].pass;
+        if (deleted) {
+            users[i - 1].name = users[i].name;
+            users[i - 1].pass = users[i].pass;
         }
-        if(!deleted && strcmp((const char *) username, users[i].name) == 0){
+        if (!deleted && strcmp((const char *) username, users[i].name) == 0) {
             free(users[i].name);
             free(users[i].pass);
             users[i].name = NULL;
@@ -410,43 +411,51 @@ void deleteUser(uint8_t * username){
             deleted = true;
         }
     }
+    if (deleted == true)
+        nusers--;
 }
 
-void disableAuth(const uint8_t * option){
-    if(*option == 0x00) {
+void disableAuth(const uint8_t *option) {
+    if (*option == 0x00) {
         auth_method = METHOD_USERNAME_PASSWORD;
     } else {
         auth_method = METHOD_NO_AUTHENTICATION_REQUIRED;
     }
 }
+
 extern uint8_t password_dissectors;
-void disablePasswordDissectors(const uint8_t * option){
+
+void disablePasswordDissectors(const uint8_t *option) {
     password_dissectors = *option;
 }
 
 void process_mng_params_request(struct selector_key *key, buffer *wb, enum mng_request_indexes index) {
     char *etiqueta = "PROCESS MNG PARAMS REQUEST";
-    struct mng_request_st * st = &ATTACHMENT(key)->client.mng_request;
+    struct mng_request_st *st = &ATTACHMENT(key)->client.mng_request;
 
     switch (index) {
-        case mng_request_index_add_user:{
-            if(nusers == MAX_USERS)
+        case mng_request_index_add_user: {
+            if (nusers == MAX_USERS)
                 status_mng_marshal(wb, mng_status_max_users_reached);
-            else{
+            else {
                 addUser(st->parser->states[1]->result, st->parser->states[3]->result);
+                status_mng_marshal(wb, mng_status_succeeded);
             }
             break;
         }
-        case mng_request_index_delete_user:{
+        case mng_request_index_delete_user: {
             deleteUser(st->parser->states[1]->result);
+            status_mng_marshal(wb, mng_status_succeeded);
             break;
         }
-        case mng_request_index_disable_auth:{
+        case mng_request_index_disable_auth: {
             disableAuth(st->parser->states[0]->result);
+            status_mng_marshal(wb, mng_status_succeeded);
             break;
         }
-        case mng_request_index_disable_password_disectors:{
+        case mng_request_index_disable_password_disectors: {
             disablePasswordDissectors(st->parser->states[0]->result);
+            status_mng_marshal(wb, mng_status_succeeded);
             break;
         }
         case mng_request_index_supported_indexes:
@@ -518,24 +527,25 @@ void list_users_mng_request_marshall(buffer *wb, struct selector_key *key) {
     size_t userLengths[nusers];
     //// Check si la info entra en el wb
     aux -= 2;                                         //// Status y nusers
-    while(auxUsers != 0){
-        lengthUser = strlen(users[iUsers++].name);    //// Users y su size
-        userLengths[iUsers] = lengthUser;
-        lengthUser += 1;
-        if(lengthUser > aux)
+    while (auxUsers != 0) {
+        lengthUser = strlen(users[iUsers].name);    //// Users y su sizeq
+        userLengths[iUsers++] = lengthUser;
+        if (lengthUser > aux)
             return;
         auxUsers--;
         aux -= lengthUser;
     }
 
     //// Escribo la info en el buffer
-    auxUsers = n;
+    auxUsers = nusers;
     iUsers = 0;
     buf[i++] = 0x00;
     buf[i++] = nusers;
-    while(auxUsers != 0){
+    char *user;
+    while (auxUsers != 0) {
         buf[i++] = userLengths[iUsers];
-        strcpy((char *)(buf + i), users[iUsers].name);
+        user = users[iUsers].name;
+        memcpy((char *) (buf + i), user, userLengths[iUsers]);
         i += userLengths[iUsers++];
         auxUsers--;
     }
@@ -570,22 +580,24 @@ struct parser *mng_request_index_add_user_parser_init(struct selector_key *key) 
     d->parser->states = malloc(sizeof(parser_substate *) * total_states);
 
     //// Nread for username
-    d->parser->states[1] = malloc(sizeof(parser_substate));
-    d->parser->states[1]->state = read_N;
+    d->parser->states[0] = malloc(sizeof(parser_substate));
+    d->parser->states[0]->state = read_N;
 
     //// Read username
-    d->parser->states[2] = malloc(sizeof(parser_substate));
-    d->parser->states[2]->state = long_read;
-    d->parser->states[2]->check_function = NULL;
+    d->parser->states[1] = malloc(sizeof(parser_substate));
+    d->parser->states[1]->state = long_read;
+    d->parser->states[1]->result = NULL;
+    d->parser->states[1]->check_function = NULL;
 
     //// Nread for password
-    d->parser->states[3] = malloc(sizeof(parser_substate));
-    d->parser->states[3]->state = read_N;
+    d->parser->states[2] = malloc(sizeof(parser_substate));
+    d->parser->states[2]->state = read_N;
 
     //// Read password
-    d->parser->states[4] = malloc(sizeof(parser_substate));
-    d->parser->states[4]->state = long_read;
-    d->parser->states[4]->check_function = NULL;
+    d->parser->states[3] = malloc(sizeof(parser_substate));
+    d->parser->states[3]->state = long_read;
+    d->parser->states[3]->result = NULL;
+    d->parser->states[3]->check_function = NULL;
 
     parser_init(d->parser);
 
@@ -609,13 +621,14 @@ struct parser *mng_request_index_delete_user_parser_init(struct selector_key *ke
     d->parser->states = malloc(sizeof(parser_substate *) * total_states);
 
     //// Nread for username
-    d->parser->states[1] = malloc(sizeof(parser_substate));
-    d->parser->states[1]->state = read_N;
+    d->parser->states[0] = malloc(sizeof(parser_substate));
+    d->parser->states[0]->state = read_N;
 
     //// Read username
-    d->parser->states[2] = malloc(sizeof(parser_substate));
-    d->parser->states[2]->state = long_read;
-    d->parser->states[2]->check_function = NULL;
+    d->parser->states[1] = malloc(sizeof(parser_substate));
+    d->parser->states[1]->state = long_read;
+    d->parser->states[1]->result = NULL;
+    d->parser->states[1]->check_function = NULL;
 
     parser_init(d->parser);
 
@@ -643,6 +656,7 @@ struct parser *mng_request_index_yes_no_value(struct selector_key *key) {
     d->parser->states[0]->state = long_read;
     d->parser->states[0]->remaining = d->parser->states[0]->size = 1;
     d->parser->states[0]->result = malloc(sizeof(uint8_t) + 1);
+    d->parser->states[0]->result[1] = 0;
     d->parser->states[0]->check_function = NULL;
 
     parser_init(d->parser);

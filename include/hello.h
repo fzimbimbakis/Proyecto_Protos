@@ -49,7 +49,7 @@
 
 #define SOCKS_VERSION 0x05
 #define MNG_VERSION 0x01
-
+#define MNG_AUTH_METHOD 0x02
 static const uint8_t METHOD_NO_AUTHENTICATION_REQUIRED = 0x00;
 static const uint8_t METHOD_NO_ACCEPTABLE_METHODS = 0xFF;
 static const uint8_t METHOD_USERNAME_PASSWORD = 0x02;
@@ -77,6 +77,9 @@ typedef struct hello_parser{
 
     /** Current protocol version **/
     uint8_t version;
+
+    /** Current protocol auth method **/
+    uint8_t method;
 
     /********* zona privada *********/
     enum hello_state state;
@@ -114,7 +117,7 @@ enum hello_state hello_consume(buffer *b, struct hello_parser *p, bool *error);
  * @param method
  * @return
  */
-int hello_marshal(buffer *b, const uint8_t method);
+int hello_marshal(buffer *b, const uint8_t method, uint8_t version);
 
 /**
  *
@@ -156,7 +159,7 @@ unsigned hello_read(struct selector_key *key);
  * @param d
  * @return
  */
-static int hello_process(const struct hello_st* d);
+static int hello_process(const struct hello_st* d, uint8_t version);
 
 /**
  * Close hello read resources

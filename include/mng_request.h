@@ -21,10 +21,10 @@ void mng_request_close(unsigned state, struct selector_key *key);
 
 //// REQUEST WRITE
 
-void mng_request_write_init(unsigned state, struct selector_key * key);
+void mng_request_write_init(unsigned state, struct selector_key *key);
 
 unsigned mng_request_write(struct selector_key *key);
 
-void mng_request_write_close(unsigned state, struct selector_key * key);
+void mng_request_write_close(unsigned state, struct selector_key *key);
 
 #endif //PROYECTO_PROTOS_MNG_REQUEST_H

@@ -8,7 +8,10 @@
 #include <stdlib.h>
 extern struct users users[MAX_USERS];
 extern int nusers;
-//#define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
+#ifndef MSG_NOSIGNAL
+//// For mac compilation only
+#define MSG_NOSIGNAL 0x2000  /* don't raise SIGPIPE */
+#endif
 #define VERSION_ERROR 32
 
 //// READ   //////////////////////////////////////////////////
@@ -56,6 +59,7 @@ void auth_read_init(unsigned state, struct selector_key *key) {
     //// Read username
     d->parser->states[2] = malloc(sizeof(parser_substate));
     d->parser->states[2]->state = long_read;
+    d->parser->states[2]->result = NULL;
     d->parser->states[2]->check_function = NULL;
 
     //// Nread for username
@@ -64,7 +68,8 @@ void auth_read_init(unsigned state, struct selector_key *key) {
 
     //// Read password
     d->parser->states[4] = malloc(sizeof(parser_substate));
-    d->parser->states[4]->state = long_read;
+    d->parser->states[4]->state = long_read;\
+    d->parser->states[4]->result = NULL;
     d->parser->states[4]->check_function = NULL;
 
     parser_init(d->parser);
@@ -141,7 +146,7 @@ void auth_read_close(unsigned state, struct selector_key *key) {
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct parser *p = ATTACHMENT(key)->client.userpass.parser;
     for (int i = 0; i < p->size; ++i) {
-        if (p->states[i]->state == long_read) {
+        if (p->states[i]->state == long_read && p->states[i]->result != NULL) {
             free(p->states[i]->result);
         }
         free(p->states[i]);
@@ -266,7 +271,7 @@ uint8_t checkMngCredentials(uint8_t *username, uint8_t *password) {
  * @param data
  * @return
  */
-extern unsigned int metrics_historic_auth_attempts;
+extern size_t metrics_historic_auth_attempts;
 int auth_process(struct userpass_st *d, struct selector_key * key) {
     char *etiqueta = "AUTH PROCESS";
     debug(etiqueta, 0, "Starting authorization data processing", 0);
@@ -279,9 +284,9 @@ int auth_process(struct userpass_st *d, struct selector_key * key) {
     else
         data->authentication = checkMngCredentials(username, password);
 
+    metrics_historic_auth_attempts += 1;
     if (data->authentication == 0x00) {
         debug(etiqueta, 0, "Access granted", 0);
-        metrics_historic_auth_attempts += 1;
     }else debug(etiqueta, 0, "Access Denied", 0);
 
     return USERPASS_WRITE;

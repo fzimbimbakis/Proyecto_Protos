@@ -41,28 +41,30 @@ uint8_t password_dissectors = DEFAULT_PASSWORD_DISSECTORS_MODE;
 //// METRICS        /////////////////////////////////////////////
 
 //// Historic connections
-unsigned int metrics_historic_connections = 0;
+size_t metrics_historic_connections = 0;
 
 //// Concurrent connections
-unsigned int metrics_concurrent_connections = 0;
+size_t metrics_concurrent_connections = 0;
 
 //// Max concurrent connections
-unsigned int metrics_max_concurrent_connections = 0;
+size_t metrics_max_concurrent_connections = 0;
 
 //// Historic byte transfer
-unsigned int metrics_historic_byte_transfer = 0;
+size_t metrics_historic_byte_transfer = 0;
 
 //// Historic auth attempts
-unsigned int metrics_historic_auth_attempts = 0;
+size_t metrics_historic_auth_attempts = 0;
 
 //// Historic connections attempts
-unsigned int metrics_historic_connections_attempts = 0;
+size_t metrics_historic_connections_attempts = 0;
 
 //// Average bytes per read
-unsigned int metrics_average_bytes_per_read = 0;
+size_t total_reads = 0;
+size_t metrics_average_bytes_per_read = 0;
 
 //// Average bytes per write
-unsigned int metrics_average_bytes_per_write = 0;
+size_t total_writes = 0;
+size_t metrics_average_bytes_per_write = 0;
 
 /////////////////////////////////////////////////////////////////
 
