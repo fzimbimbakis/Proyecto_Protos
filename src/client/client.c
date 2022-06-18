@@ -99,14 +99,16 @@ int main(const int argc, const char **argv)
     if(response==0xFF)
         goto error;
 
-    if(response==0x01) {
+    if(response==0x02) {
         send_credentials(sockfd, args->user);
         //printf("send credentials");
     }
 
     response=credentials_response(sockfd);
-    if(response==0xFF)
+    if(response!=0x00) {
+        printf("Error on user authentication.\n");
         goto error;
+    }
 
 
     int req_index;

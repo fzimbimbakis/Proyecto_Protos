@@ -19,7 +19,7 @@ int handshake(int sockfd, struct user* user){
     if(user->credentials){
         buffer[1]=0x02; //NMETODS
         buffer[2]=0x00; //NO AUTHENTICATION REQUIRED
-        buffer[3]=0x01; //USERNAME/PASSWORD
+        buffer[3]=0x02; //USERNAME/PASSWORD
         bytes_to_send=4;
     }else{
         buffer[1]=0x01; //NMETODS
@@ -45,27 +45,27 @@ uint8_t handshake_response(int sockfd){
 
 int send_credentials(int sockfd, struct user* user){
     uint8_t buffer[100];
-    buffer[0]=0x01;//version
-    buffer[1]=0x01;//subnegotiation version
+    int i = 0;
+    buffer[i++]=0x01;//subnegotiation version
 
     int userlen=strlen(user->username);
-    buffer[2]=userlen;
-    strcpy((char*)buffer +3, user->username);
+    buffer[i++]=userlen;
+    strcpy((char*)buffer + i, user->username);
     int passlen= strlen(user->password);
-    buffer[3 + userlen]=passlen;
-    strcpy((char*)buffer+ 4 + userlen, user->password);
+    buffer[i++ + userlen]=passlen;
+    strcpy((char*)buffer +  i + userlen, user->password);
 
-    return send(sockfd, buffer, userlen + passlen + 4,0);
+    return send(sockfd, buffer, userlen + passlen + i,0);
 }
 
 uint8_t credentials_response(int sockfd){
-    uint8_t buffer[3];
-    int rec=recv(sockfd, buffer, 3, 0);
-    if(rec != 3) {
+    uint8_t buffer[2];
+    int rec=recv(sockfd, buffer, 2, 0);
+    if(rec != 2) {
         printf("Error credentials_response\n");
         return 0xFF;
     }
-    return buffer[2];
+    return buffer[1];
 }
 
 
@@ -207,12 +207,13 @@ void list_users(char* buffer){
     //printf("%s\n\n", buffer +2);
     //printf("%d", b);
     int index=2;
-    char aux[20];
+    char aux[256];
     uint8_t user_len;
     for(uint8_t i=0 ; i < b ; i++){
         user_len=buffer[index++];
         //printf("userlen= %d\n", user_len);
         strncpy(aux, buffer + index, user_len);
+        aux[user_len] = 0;
         printf("User: %s\n", aux);
         index+=user_len;
         //printf("index= %d\n", index);
@@ -272,6 +273,9 @@ int request_response(int sockfd, int req_index){
         case 9://Average bytes per single server write.
             stats= cast_uint32((char*) buffer);
             printf("Average bytes per single server write: %u\n", stats);
+            break;
+        case 10://Delete a user.
+            printf("Added user successfully\n");
             break;
         case 11://Delete a user.
             printf("Deleted user successfully\n");
