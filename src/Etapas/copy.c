@@ -1,6 +1,9 @@
 #include <stdlib.h>
 #include "../../include/copy.h"
-//#define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
+#ifndef MSG_NOSIGNAL
+//// For mac compilation only
+#define MSG_NOSIGNAL 0x2000  /* don't raise SIGPIPE */
+#endif
 fd_interest copy_compute_interests(fd_selector s, struct copy_st *d)
 {
     char * etiqueta = "COPY COMPUTE INTERESTS";

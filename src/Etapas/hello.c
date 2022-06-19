@@ -1,6 +1,9 @@
 #include "../../include/hello.h"
 
-//#define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
+#ifndef MSG_NOSIGNAL
+//// For mac compilation only
+#define MSG_NOSIGNAL 0x2000  /* don't raise SIGPIPE */
+#endif
 
 void hello_parser_init(struct hello_parser *p)
 {

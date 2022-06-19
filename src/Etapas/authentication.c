@@ -8,7 +8,10 @@
 #include <stdlib.h>
 extern struct users users[MAX_USERS];
 extern int nusers;
-//#define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
+#ifndef MSG_NOSIGNAL
+//// For mac compilation only
+#define MSG_NOSIGNAL 0x2000  /* don't raise SIGPIPE */
+#endif
 #define VERSION_ERROR 32
 
 //// READ   //////////////////////////////////////////////////

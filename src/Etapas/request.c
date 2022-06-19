@@ -14,6 +14,10 @@
 #include "resolv.h"
 #define IPV4_LEN 4
 #define IPV6_LEN 16
+#ifndef MSG_NOSIGNAL
+//// For mac compilation only
+#define MSG_NOSIGNAL 0x2000  /* don't raise SIGPIPE */
+#endif
 
 //// INIT
 void
@@ -237,6 +241,7 @@ unsigned request_write(struct selector_key *key)
     ssize_t n;
     ptr = buffer_read_ptr(b, &count);
     debug(etiqueta, count, "Writing to client", key->fd);
+    //signal(SIGPIPE, SIG_IGN);
     n = send(key->fd, ptr, count, MSG_NOSIGNAL);
     if (n == -1)
     {

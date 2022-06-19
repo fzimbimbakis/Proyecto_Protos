@@ -86,6 +86,13 @@ unsigned connecting_write(struct selector_key *key){
 
     }else{                                                                      //// Connection refused, check next IP if any
 
+        if(data->origin_resolution_current==NULL){
+            debug(etiqueta, 0, "Connection refused -> REQUEST_WRITE to reply error to client", key->fd);
+            request_marshall(errno_to_socks(error), &data->write_buffer);
+            selector_set_interest_key(key, OP_WRITE);
+            return REQUEST_WRITE;
+        }
+
         debug(etiqueta, 0, "Connection failed. Checking other IPs", key->fd);
         data->orig.conn.status = errno_to_socks(error);
 
@@ -188,7 +195,12 @@ void connection(struct selector_key *key){
     if(connectResult != 0 && errno != EINPROGRESS){
         debug(etiqueta, connectResult, "Connection for origin socket failed", key->fd);
         data->client.request.status = errno_to_socks(errno);
-        goto fail;
+        request_marshall(errno_to_socks(errno), &data->write_buffer);
+        selector_set_interest_key(key, OP_WRITE);
+        request_write(key);
+        /*debug(etiqueta, connectResult, "Connection for origin socket failed", key->fd);
+        data->client.request.status = errno_to_socks(errno);
+        goto fail;*/
     }
 
     if(connectResult != 0){     //// EINPROGRESS
@@ -229,5 +241,5 @@ void connection(struct selector_key *key){
     fail:
     debug(etiqueta, 0, "Fail", 0);
     fprintf(stderr, "%s\n",strerror(errno));
-    exit(EXIT_FAILURE);     //// TODO Exit?
+    exit(EXIT_FAILURE);     //// TODO: Hay que corregir esto!!
 }
