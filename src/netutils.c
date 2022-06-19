@@ -7,7 +7,10 @@
 #include <arpa/inet.h>
 
 #include "../include/netutils.h"
-
+#ifndef MSG_NOSIGNAL
+//// For mac compilation only
+#define MSG_NOSIGNAL 0x2000  /* don't raise SIGPIPE */
+#endif
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 
 extern const char *

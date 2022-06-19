@@ -54,6 +54,7 @@ void connecting_init(const unsigned state, struct selector_key *key){
 }
 
 //// WRITE
+extern struct users users[MAX_USERS];
 extern size_t metrics_historic_connections;
 extern size_t metrics_concurrent_connections;
 extern size_t metrics_max_concurrent_connections;
@@ -67,7 +68,7 @@ unsigned connecting_write(struct selector_key *key){
     struct sockaddr * clientAddr = (struct sockaddr *) &ATTACHMENT(key)->client_addr;
     char * orig = malloc(ATTACHMENT(key)->origin_addr_len);
     char * client = malloc(ATTACHMENT(key)->client_addr_len);
-    printf("%d\t%s\t%s\t%s", ATTACHMENT(key)->userIndex, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo));
+    printf("%s\t to: %s \t from: %s \t %s\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo));
 
     char * etiqueta = "CONNECTING WRITE";
     debug(etiqueta, 0, "Starting stage", key->fd);
