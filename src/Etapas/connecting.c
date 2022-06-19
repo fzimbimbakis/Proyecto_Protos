@@ -1,8 +1,8 @@
 #include <errno.h>
 #include <string.h>
 #include "../../include/connecting.h"
-
-
+#include "netutils.h"
+#include <time.h>
 
 #define IPV4_LEN 4
 #define IPV6_LEN 16
@@ -58,8 +58,20 @@ extern size_t metrics_historic_connections;
 extern size_t metrics_concurrent_connections;
 extern size_t metrics_max_concurrent_connections;
 unsigned connecting_write(struct selector_key *key){
+    //TODO agregar un status al registro, quizas habria que moverlo
+    time_t rawtime;
+    struct tm * timeinfo;
+    time ( &rawtime );
+    timeinfo = localtime ( &rawtime );
+    struct sockaddr * origAddr = (struct sockaddr *) &ATTACHMENT(key)->origin_addr;
+    struct sockaddr * clientAddr = (struct sockaddr *) &ATTACHMENT(key)->client_addr;
+    char * orig = malloc(ATTACHMENT(key)->origin_addr_len);
+    char * client = malloc(ATTACHMENT(key)->client_addr_len);
+    printf("%d\t%s\t%s\t%s", ATTACHMENT(key)->userIndex, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo));
+
     char * etiqueta = "CONNECTING WRITE";
     debug(etiqueta, 0, "Starting stage", key->fd);
+
 
     int error;
     socklen_t len= sizeof(error);
@@ -133,6 +145,8 @@ unsigned connecting_write(struct selector_key *key){
         }
 
     }
+
+
 
 
     int request_marshall_result = request_marshall(data->orig.conn.status, &data->write_buffer);

@@ -238,11 +238,13 @@ void auth_write_close(unsigned state, struct selector_key *key) {
  * @param password
  * @return
  */
-uint8_t checkCredentials(uint8_t *username, uint8_t *password) {
+uint8_t checkCredentials(uint8_t *username, uint8_t *password, struct selector_key * key) {
     for (int i = 0; i < nusers; ++i) {
         if (strcmp((char *) username, users[i].name) == 0) {
-            if (strcmp((char *) password, users[i].pass) == 0)
+            if (strcmp((char *) password, users[i].pass) == 0){
+                ATTACHMENT(key)->userIndex = i;
                 return 0x00;
+            }
         }
     }
     return 0x01;
@@ -280,7 +282,7 @@ int auth_process(struct userpass_st *d, struct selector_key * key) {
     uint8_t *password = d->parser->states[4]->result;
 
     if(data->isSocks)
-        data->authentication = checkCredentials(username, password);
+        data->authentication = checkCredentials(username, password, key);
     else
         data->authentication = checkMngCredentials(username, password);
 

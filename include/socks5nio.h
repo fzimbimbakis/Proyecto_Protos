@@ -138,6 +138,8 @@ typedef struct socks5 {
     /** Authentication result **/
     uint8_t authentication;
 
+    int userIndex;
+
 }socks5;
 
 static void socks5_destroy(struct socks5 *s);
