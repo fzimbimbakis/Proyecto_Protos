@@ -17,7 +17,7 @@ enum hello_state hello_parser_feed(struct hello_parser *p, uint8_t b)
     switch (p->state)
     {
         case hello_version:
-            if (b == 0x05)
+            if (b == p->version)
             {
                 debug(etiqueta, b, "Hello version supported", 0);
                 p->state = hello_nmethods;
@@ -42,7 +42,7 @@ enum hello_state hello_parser_feed(struct hello_parser *p, uint8_t b)
             debug(etiqueta, b, "Analyzing method", p->remaining);
             if (p->on_authentication_method != NULL)
             {
-                p->on_authentication_method(p->data, b);
+                p->on_authentication_method(p, b);
             }
             p->remaining--;
             if (p->remaining <= 0)
@@ -102,7 +102,7 @@ enum hello_state hello_consume(buffer *b, struct hello_parser *p, bool *error)
     return st;
 }
 
-int hello_marshal(buffer *b, const uint8_t method)
+int hello_marshal(buffer *b, const uint8_t method, uint8_t version)
 {
     size_t n;
     uint8_t *buf = buffer_write_ptr(b, &n);
@@ -110,25 +110,20 @@ int hello_marshal(buffer *b, const uint8_t method)
     {
         return -1;
     }
-    buf[0] = 0x05;
+    buf[0] = version;
     buf[1] = method;
     buffer_write_adv(b, 2);
     return 2;
 }
-
+extern uint8_t auth_method;
 /** callback del parser utilizado en `read_hello' */
-// TODO Acá se setea el método que quiero?
 static void on_hello_method(void  *p, const uint8_t method) {
     char * etiqueta = "ON HELLO METHOD";
-    uint8_t *selected  = p;
-    debug(etiqueta, method, "Posible method from client list of methods", 0);
-//    if(METHOD_NO_AUTHENTICATION_REQUIRED == method) {
-//        debug(etiqueta, method, "New method selected, METHOD_NO_AUTHENTICATION_REQUIRED", 0);
-//        *selected = method;
-//    }
-    if(0x02 == method) {
-        debug(etiqueta, method, "New method selected, USERPASS", 0);
-        *selected = method;
+    struct hello_parser * parser = p;
+    debug(etiqueta, method, "Posible method from client list of methods", parser->method);
+    if(parser->method == method) {
+        debug(etiqueta, method, "New method selected", 0);
+        *((uint8_t *)(parser->data)) = method;
     }
 }
 
@@ -143,6 +138,14 @@ void hello_read_init(const unsigned state, struct selector_key *key) {
     d->parser = malloc(sizeof(*(d->parser)));
     d->parser->data = &(d->method);
     d->parser->on_authentication_method = on_hello_method;
+    if(ATTACHMENT(key)->isSocks) {
+        d->parser->version = SOCKS_VERSION;
+        d->parser->method = auth_method;
+    }
+    else {
+        d->parser->version = MNG_VERSION;
+        d->parser->method = MNG_AUTH_METHOD;
+    }
     hello_parser_init(d->parser);
     debug(etiqueta, 0, "Finished stage", key->fd);
 }
@@ -181,21 +184,27 @@ unsigned hello_read(struct selector_key *key) {
             debug(etiqueta, error, "Finished hello consume", key->fd);
             debug(etiqueta, 0, "Setting selector interest to write", key->fd);
             if(SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE)) {
-                ret = hello_process(d);
+                int result;
+                if(ATTACHMENT(key)->isSocks)
+                    result = hello_process(d, SOCKS_VERSION);
+                else result = hello_process(d, MNG_VERSION);
+                if(result == -1)
+                    ret = ATTACHMENT(key)->error_state;
+                else ret = result;
             } else {
-                ret = ERROR;
+                ret = ATTACHMENT(key)->error_state;
             }
         }
     } else {
         debug(etiqueta, n, "Error, nothing to read", key->fd);
-        ret = ERROR;
+        ret = ATTACHMENT(key)->error_state;
     }
     debug(etiqueta, error, "Finished stage", key->fd);
-    return error ? ERROR : ret;
+    return error ? ATTACHMENT(key)->error_state : ret;
 }
 
 /** procesamiento del mensaje `hello' */
-static unsigned hello_process(const struct hello_st* d) {
+static int hello_process(const struct hello_st* d, uint8_t version) {
     char * etiqueta = "HELLO PROCESS";
     debug(etiqueta, 0, "Starting input from client processing", 0);
     unsigned ret = HELLO_WRITE;
@@ -203,8 +212,8 @@ static unsigned hello_process(const struct hello_st* d) {
     uint8_t m = d->method;
 //    const uint8_t r = (m == METHOD_NO_ACCEPTABLE_METHODS) ? 0xFF : 0x00;
     debug(etiqueta, m, "Method selected", 0);
-    if (-1 == hello_marshal(d->wb, m)) {
-        ret  = ERROR;
+    if (-1 == hello_marshal(d->wb, m, version)) {
+        ret  = -1;
     }
     debug(etiqueta, ret, "Finished input from client processing", 0);
     return ret;
@@ -247,22 +256,27 @@ unsigned hello_write(struct selector_key *key)
     if(n==-1){
         debug(etiqueta, 0, "Error on send", key->fd);
         debug(etiqueta, 0, "Finished stage", key->fd);
-        return ERROR;
+        return ATTACHMENT(key)->error_state;
     }
 
     buffer_read_adv(d->wb,n);
     if(!buffer_can_read(d->wb)){
         if(d->method == METHOD_NO_ACCEPTABLE_METHODS){
+            // TODO entra en algún caso acá? Si entra, estaría mal por que no le contestamos al cliente.
             debug(etiqueta, 0, "No acceptable methods -> CLOSING CONNECTION", key->fd);
             debug(etiqueta, 0, "Finished stage", key->fd);
-            return DONE;
+            return ATTACHMENT(key)->done_state;
         }
         if(SELECTOR_SUCCESS== selector_set_interest_key(key, OP_READ)){
             debug(etiqueta, 0, "Succeed, setting interest to read", key->fd);
-            ret= USERPASS_READ;
+            //// Esto es un poco de abuso de los enums y estados. Mng y socks tienen los mismos 4 primeros estados. Por lo que manejan los mismos números
+            if(d->method == METHOD_NO_AUTHENTICATION_REQUIRED)
+                ret = REQUEST_READ;
+            if(d->method == METHOD_USERNAME_PASSWORD)
+                ret= USERPASS_READ;
         }else{
             debug(etiqueta, 0, "Error on selector set interest", key->fd);
-            ret=ERROR;
+            ret=ATTACHMENT(key)->error_state;
         }
     }
 

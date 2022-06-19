@@ -60,16 +60,19 @@ enum parser_state parser_feed(struct parser *p, uint8_t b)
             p->current = substate->state;
 
             debug(etiqueta, b, "Received N for long_read", 0);
-            if (substate->remaining <= 0)      //// Si es cero salteo la fase de long_read
+            if (substate->remaining <= 0)      //// Si es cero, pongo un string vacio y salteo la fase de long_read
             {
                 debug(etiqueta, b, "N is 0", 0);
-                substate->result = NULL;
+                substate->result = malloc(1);
+                substate->result[0] = 0;
                 p->index = p->index + 1;
-                substate = (p->states[p->index]);
                 if(p->index >= p->size) {
                     p->current = done_read;
                     break;
-                } else p->current = substate->state;
+                } else {
+                    substate = (p->states[p->index]);
+                    p->current = substate->state;
+                }
             } else{
                 substate->result = malloc((sizeof(uint8_t) * substate->size)+1);
             }

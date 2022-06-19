@@ -46,8 +46,12 @@ user(char *s, struct users *user) {
     } else {
         *p = 0;
         p++;
-        user->name = s;
-        user->pass = p;
+        char * newUsername = malloc(strlen(s) + 1);
+        char * newPassword = malloc(strlen(p) + 1);
+        strcpy(newUsername, (char *)s);
+        strcpy(newPassword, (char *)p);
+        user->name = newUsername;
+        user->pass = newPassword;
     }
     return 0;
 }
@@ -84,8 +88,8 @@ int parse_args(const int argc, char *const * argv, struct socks5args *args) {
     memset(args, 0, sizeof(*args)); // sobre todo para setear en null los punteros de users
 
     //// Default values
-    args->socks_addr = "0.0.0.0";
-    args->socks_addr_6 = "::";
+    args->socks_addr = "127.0.0.1";
+    args->socks_addr_6 = "::1";
     args->socks_port = 1080;
     args->socks_family = AF_UNSPEC;
     memset(&args->socks_addr_info, 0, sizeof(args->socks_addr_info));
@@ -94,9 +98,9 @@ int parse_args(const int argc, char *const * argv, struct socks5args *args) {
     args->buffer_size = DEFAULT_BUFFER_SIZE;
     args->mng_buffer_size = DEFAULT_BUFFER_SIZE;
 
-    args->mng_addr = "0.0.0.0";
-    args->mng_addr_6 = "::";
-    args->mng_port = 8888;
+    args->mng_addr = "127.0.0.1";
+    args->mng_addr_6 = "::1";
+    args->mng_port = 8080;
     args->mng_family = AF_UNSPEC;
     memset(&args->mng_addr_info, 0, sizeof(args->mng_addr_info));
     memset(&args->mng_addr_info6, 0, sizeof(args->mng_addr_info6));

@@ -19,6 +19,7 @@
 #define MSG_NOSIGNAL 0x2000  /* don't raise SIGPIPE */
 #endif
 
+#define MSG_NOSIGNAL      0x2000  /* don't raise SIGPIPE */
 //// INIT
 void
 request_init(const unsigned state, struct selector_key *key)
@@ -159,6 +160,7 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
 
         //// IPv4
         case socks_req_addrtype_ipv4: {
+            d->addr_family = socks_req_addrtype_ipv4;
             debug(etiqueta, 0, "IPV4", key->fd);
             struct sockaddr_in * addr4 = (struct sockaddr_in *) &(data->client.request.parser->request->dest_addr);
             data->origin_domain = AF_INET;
@@ -172,6 +174,7 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
 
         //// IPv6
         case socks_req_addrtype_ipv6: {
+            d->addr_family = socks_req_addrtype_ipv6;
             debug(etiqueta, 0, "IPV6", key->fd);
             struct sockaddr_in6 * addr6 = (struct sockaddr_in6 *) &(data->client.request.parser->request->dest_addr);
             data->origin_domain = AF_INET6;
@@ -185,8 +188,8 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
 
         //// FQDN
         case socks_req_addrtype_domain: {
+            d->addr_family = socks_req_addrtype_domain;
             debug(etiqueta, 0, "FQDN", key->fd);
-
             struct selector_key *k= malloc(sizeof (*key));
 
                 if(k==NULL){

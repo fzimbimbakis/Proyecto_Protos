@@ -119,8 +119,8 @@ static struct socks5* socks5_new(int client_fd){
     if(ret == NULL){
         goto finally;
     }
-
     memset(ret, 0x00, sizeof(*ret));
+    ret->isSocks = true;
 
     ret->origin_fd =-1;
     ret->client_fd= client_fd;
@@ -133,6 +133,10 @@ static struct socks5* socks5_new(int client_fd){
     ret->stm.current= &client_statbl[0];
     ret->stm.states= client_statbl;
     stm_init(&ret->stm);
+
+    //// Terminal states
+    ret->done_state = DONE;
+    ret->error_state = ERROR;
 
     // TODO El tamaño del buffer podría depender de la etapa
     debug(etiqueta, 0, "Init buffers", client_fd);
@@ -151,10 +155,6 @@ static struct socks5* socks5_new(int client_fd){
 /** realmente destruye */
 static void
 socks5_destroy_(struct socks5* s) {
-    if(s->origin_resolution != NULL) {
-        freeaddrinfo(s->origin_resolution);
-        s->origin_resolution = 0;
-    }
     free(s);
 }
 

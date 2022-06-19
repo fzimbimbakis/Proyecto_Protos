@@ -1,16 +1,20 @@
 CFLAGS= -g -I./include --std=c11 -pedantic -pedantic-errors -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function -Wno-implicit-fallthrough -D_POSIX_C_SOURCE=200112L
 
-CLIENT_C_FILES = src/client.o src/tcpClientUtil.o src/util.o src/logger.o
+CLIENT_C_FILES = src/client/client.o src/client/clientUtils.o src/client/clientArgs.o src/debug.o src/address_utils.o
 
 LDFLAGS = -lpthread -pthread
-SERVER_C_FILES =   src/selector.o src/stm.o src/myParser.o src/Etapas/authentication.o src/socks5nio.o src/Etapas/connecting.o src/Etapas/hello.o src/Etapas/request_parser.o src/Etapas/resolv.o src/Etapas/request.o src/Etapas/copy.o src/debug.o src/address_utils.o src/socket_utils.o src/buffer.o src/args.o src/main.o
+SERVER_C_FILES =   src/selector.o src/stm.o src/myParser.o src/Etapas/authentication.o src/socks5nio.o src/mng_nio.o src/Etapas/mng_request.o src/Etapas/connecting.o src/Etapas/hello.o src/Etapas/request_parser.o src/Etapas/resolv.o src/Etapas/request.o src/Etapas/copy.o src/debug.o src/address_utils.o src/socket_utils.o src/buffer.o src/args.o src/main.o
 
+mng_nio.o: mng_nio.h
+mng_request.o: mng_request.h
 authentication.o:	authentication.h
 myParser.o:			myParser.h
 request_parser.o:	request_parser.h
 resolv.o:			resolv.h
 client.o:			client.h
+clientArgs.o:		clientArgs.h
 tcpClientUtil.o:	tcpClientUtil.h
+clientUtils.o:		clientUtils.h
 util.o:				util.h
 logger.o:			logger.h
 selector.o:			selector.h

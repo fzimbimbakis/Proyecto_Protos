@@ -59,6 +59,7 @@ void auth_read_init(unsigned state, struct selector_key *key) {
     //// Read username
     d->parser->states[2] = malloc(sizeof(parser_substate));
     d->parser->states[2]->state = long_read;
+    d->parser->states[2]->result = NULL;
     d->parser->states[2]->check_function = NULL;
 
     //// Nread for username
@@ -67,7 +68,8 @@ void auth_read_init(unsigned state, struct selector_key *key) {
 
     //// Read password
     d->parser->states[4] = malloc(sizeof(parser_substate));
-    d->parser->states[4]->state = long_read;
+    d->parser->states[4]->state = long_read;\
+    d->parser->states[4]->result = NULL;
     d->parser->states[4]->check_function = NULL;
 
     parser_init(d->parser);
@@ -109,15 +111,15 @@ unsigned auth_read(struct selector_key *key) {
                 debug(etiqueta, 0, "Starting authorization data processing", 0);
                 ret = auth_process(d, key);
             } else {
-                ret = ERROR;
+                ret = ATTACHMENT(key)->error_state;
             }
         }
     } else {
         debug(etiqueta, n, "Error, nothing to read", key->fd);
-        ret = ERROR;
+        ret = ATTACHMENT(key)->error_state;
     }
     debug(etiqueta, error, "Finished stage", key->fd);
-    return error ? ERROR : ret;
+    return error ? ATTACHMENT(key)->error_state : ret;
 }
 
 
@@ -144,7 +146,7 @@ void auth_read_close(unsigned state, struct selector_key *key) {
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct parser *p = ATTACHMENT(key)->client.userpass.parser;
     for (int i = 0; i < p->size; ++i) {
-        if (p->states[i]->state == long_read) {
+        if (p->states[i]->state == long_read && p->states[i]->result != NULL) {
             free(p->states[i]->result);
         }
         free(p->states[i]);
@@ -194,21 +196,21 @@ unsigned auth_write(struct selector_key *key) {
     ptr = buffer_read_ptr(d->wb, &count);
     n = send(key->fd, ptr, count, MSG_NOSIGNAL);
     if (n == -1) {
-        ret = ERROR;
+        ret = ATTACHMENT(key)->error_state;
     } else {
         buffer_read_adv(d->wb, n);
         debug(etiqueta, 0, "Finished writing auth result to client", key->fd);
         if (!buffer_can_read(d->wb)) {
             if(data->authentication != 0x00){
                 debug(etiqueta, 0, "Access denied -> Closing connection", key->fd);
-                return DONE;
+                return data->done_state;
             }
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_READ)) {
                 debug(etiqueta, 0, "Setting interest to read", key->fd);
                 ret = REQUEST_READ;
             } else {
                 debug(etiqueta, 0, "Error on selector", key->fd);
-                ret = ERROR;
+                ret = ATTACHMENT(key)->error_state;
             }
         }
     }
@@ -231,7 +233,7 @@ void auth_write_close(unsigned state, struct selector_key *key) {
 }
 
 /**
- * Auxiliar function for auth_process
+ * Auxiliar function for socks auth_process
  * @param username
  * @param password
  * @return
@@ -247,22 +249,46 @@ uint8_t checkCredentials(uint8_t *username, uint8_t *password) {
 }
 
 /**
+ * Auxiliar function for mng auth_process
+ * @param username
+ * @param password
+ * @return
+ */
+uint8_t checkMngCredentials(uint8_t *username, uint8_t *password) {
+    //// TODO: Change to real MNG credentials
+    for (int i = 0; i < nusers; ++i) {
+        if (strcmp((char *) username, users[i].name) == 0) {
+            if (strcmp((char *) password, users[i].pass) == 0)
+                return 0x00;
+        }
+    }
+    return 0x01;
+}
+
+/**
  *
  * @param d Userpass State (Contains client input credentials)
  * @param data
  * @return
  */
+extern size_t metrics_historic_auth_attempts;
 int auth_process(struct userpass_st *d, struct selector_key * key) {
     char *etiqueta = "AUTH PROCESS";
     debug(etiqueta, 0, "Starting authorization data processing", 0);
     struct socks5 * data = key->data;
     uint8_t *username = d->parser->states[2]->result;
     uint8_t *password = d->parser->states[4]->result;
-    data->authentication = checkCredentials(username, password);
-    if (data->authentication == 0x00)
-        debug(etiqueta, 0, "Access granted", 0);
+
+    if(data->isSocks)
+        data->authentication = checkCredentials(username, password);
     else
-        debug(etiqueta, 0, "Access Denied", 0);
+        data->authentication = checkMngCredentials(username, password);
+
+    metrics_historic_auth_attempts += 1;
+    if (data->authentication == 0x00) {
+        debug(etiqueta, 0, "Access granted", 0);
+    }else debug(etiqueta, 0, "Access Denied", 0);
+
     return USERPASS_WRITE;
 }
 

@@ -54,6 +54,9 @@ void connecting_init(const unsigned state, struct selector_key *key){
 }
 
 //// WRITE
+extern size_t metrics_historic_connections;
+extern size_t metrics_concurrent_connections;
+extern size_t metrics_max_concurrent_connections;
 unsigned connecting_write(struct selector_key *key){
     char * etiqueta = "CONNECTING WRITE";
     debug(etiqueta, 0, "Starting stage", key->fd);
@@ -76,7 +79,15 @@ unsigned connecting_write(struct selector_key *key){
     if(error== 0){                                                              //// Check connection status
 
                                                                                 //// Connection succeeded
+        //// Add connection to metrics
+        metrics_historic_connections += 1;
+        metrics_concurrent_connections += 1;
+        if(metrics_concurrent_connections > metrics_max_concurrent_connections)
+            metrics_max_concurrent_connections = metrics_concurrent_connections;
+
         debug(etiqueta, 0, "Connection succeed", key->fd);
+        if(data->client.request.addr_family == socks_req_addrtype_domain)
+            freeaddrinfo(data->origin_resolution);
         data->orig.conn.status=status_succeeded;
         data->orig.conn.origin_fd = key->fd;
         request_marshall(data->orig.conn.status, &data->write_buffer);
@@ -96,7 +107,7 @@ unsigned connecting_write(struct selector_key *key){
         debug(etiqueta, 0, "Connection failed. Checking other IPs", key->fd);
         data->orig.conn.status = errno_to_socks(error);
 
-        if(data->origin_resolution_current->ai_next != NULL){                   //// Check if next IP exists
+        if(data->origin_resolution_current != NULL && data->origin_resolution_current->ai_next != NULL){                   //// Check if next IP exists
 
 
             debug(etiqueta, 0, "Checking next IP", key->fd);
@@ -116,6 +127,8 @@ unsigned connecting_write(struct selector_key *key){
             debug(etiqueta, 0, "No more IPs -> REQUEST_WRITE to reply error to client", key->fd);
             request_marshall(errno_to_socks(error), &data->write_buffer);
             selector_set_interest_key(key, OP_WRITE);
+            if(data->client.request.addr_family == socks_req_addrtype_domain)
+                freeaddrinfo(data->origin_resolution);
             return REQUEST_WRITE;
         }
 
@@ -145,10 +158,6 @@ void connecting_close(const unsigned state, struct selector_key *key){
         // TODO ver estos free porque rompen las cosas. Como que hacen el free antes de lo debido
         request_parser_close(d->parser);
         free(d->parser);
-    }
-//    d->parser = NULL;
-    if(ATTACHMENT(key)->origin_resolution != NULL) {
-        freeaddrinfo(ATTACHMENT(key)->origin_resolution);
     }
     debug(etiqueta, 0, "Finished stage", key->fd);
 }
@@ -182,6 +191,7 @@ enum socks_reply_status errno_to_socks(int e){
     return ret;
 }
 
+extern size_t metrics_historic_connections_attempts;
 void connection(struct selector_key *key){
     // TODO(bruno) Error handling
     char * etiqueta = "CONNECTION";
@@ -190,6 +200,10 @@ void connection(struct selector_key *key){
 
     debug(etiqueta, 0, "Connecting socket to origin", key->fd);
     int *fd= &data->origin_fd;
+
+    //// Add connection attempt to metrics
+    metrics_historic_connections_attempts += 1;
+
     int connectResult = connect(*fd, (const struct sockaddr*)&ATTACHMENT(key)->origin_addr, ATTACHMENT(key)->origin_addr_len);
 
     if(connectResult != 0 && errno != EINPROGRESS){

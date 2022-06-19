@@ -71,6 +71,10 @@ void * copy_ptr(struct selector_key *key){
     return NULL;
 }
 // lee bytes de un socket y los encola para ser escritos en otro socket
+extern size_t metrics_historic_byte_transfer;
+extern size_t metrics_average_bytes_per_read;
+extern size_t total_reads;
+extern size_t metrics_concurrent_connections;
 unsigned copy_read(struct selector_key *key)
 {
     char * etiqueta = "COPY READ";
@@ -89,6 +93,7 @@ unsigned copy_read(struct selector_key *key)
     debug(etiqueta, 0, "Starting read", key->fd);
     uint8_t *ptr = buffer_write_ptr(b, &size);
     n = recv(key->fd, ptr, size, 0);
+
     debug(etiqueta, n, "Finished recv", key->fd);
     if (n <= 0)
     {
@@ -104,7 +109,18 @@ unsigned copy_read(struct selector_key *key)
     }
     else
     {
+        //// Add bytes read
+        if (total_reads == 0) {
+            metrics_average_bytes_per_read = n;
+            total_reads++;
+        } else {
+            metrics_average_bytes_per_read = ((metrics_average_bytes_per_read * total_reads) + n) / (total_reads + 1);
+            total_reads++;
+        }
+        metrics_historic_byte_transfer += n;
+
         buffer_write_adv(b, n);
+
         debug(etiqueta, n, "Buffer write adv", key->fd);
     }
     copy_compute_interests(key->s, d);
@@ -112,6 +128,7 @@ unsigned copy_read(struct selector_key *key)
     if (d->interest == OP_NOOP)
     {
         debug(etiqueta, n, "Socket has no more interests -> DONE state", key->fd);
+        metrics_concurrent_connections -= 1;
         ret = DONE;
     }
 
@@ -119,6 +136,8 @@ unsigned copy_read(struct selector_key *key)
 }
 
 // escribe bytes encolados
+extern size_t metrics_average_bytes_per_write;
+extern size_t total_writes;
 unsigned copy_write(struct selector_key *key)
 {
     char * etiqueta = "COPY WRITE";
@@ -134,6 +153,7 @@ unsigned copy_write(struct selector_key *key)
     debug(etiqueta, 0, "Starting write", key->fd);
     uint8_t *ptr = buffer_read_ptr(b, &size);
     n = send(key->fd, ptr, size, MSG_NOSIGNAL);
+
     if (n == -1)
     {
         shutdown(d->fd, SHUT_WR);
@@ -146,6 +166,15 @@ unsigned copy_write(struct selector_key *key)
     }
     else
     {
+        //// Add written bytes to metrics
+        metrics_historic_byte_transfer += n;
+        if (total_writes == 0) {
+            metrics_average_bytes_per_write = n;
+            total_writes++;
+        } else {
+            metrics_average_bytes_per_write = ((metrics_average_bytes_per_write * total_writes) + n) / (total_writes + 1);
+            total_writes++;
+        }
         buffer_read_adv(b, n);
         debug(etiqueta, n, "Buffer read adv", key->fd);
     }
@@ -154,6 +183,7 @@ unsigned copy_write(struct selector_key *key)
     if (d->interest == OP_NOOP)
     {
         debug(etiqueta, n, "Socket has no more interests -> DONE state", key->fd);
+        metrics_concurrent_connections -= 1;
         ret = DONE;
     }
 
