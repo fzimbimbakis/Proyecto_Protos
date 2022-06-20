@@ -8,6 +8,11 @@
 //// Definición de variables para cada estado
 
 
+enum hello_status{
+    HELLO_ERROR,
+    HELLO_SUCCESS
+};
+
 /** Used by the HELLO_READ and HELLO_WRITE states */
 typedef struct hello_st
 {
@@ -17,7 +22,15 @@ typedef struct hello_st
     struct hello_parser * parser;
     /** Selected auth method */
     uint8_t method;
+    /** auth status */
+    enum hello_status status;
 }hello_st;
+
+
+enum auth_status{
+    AUTH_ERROR,
+    AUTH_SUCCESS
+};
 
 /** Used by the USERPASS_READ and USERPASS_WRITE states */
 typedef struct userpass_st
@@ -26,11 +39,8 @@ typedef struct userpass_st
 buffer *rb, *wb;
 /** Pointer to user-pass parser */
 struct parser * parser;
-/** Selected user */
-//uint8_t * user;
-/** Selected password */
-//uint8_t * password;
-//uint8_t auth_result;
+/** auth status */
+enum auth_status status;
 } userpass_st;
 
 /** Used by the REQUEST_READ, REQUEST_WRITE and REQUEST_RESOLV state */

@@ -314,17 +314,17 @@ main(const int argc, const char **argv) {
             .handle_write      = NULL,
             .handle_close      = NULL, // nada que liberar
     };
-    if(args->socks_family == AF_UNSPEC){
+    if(args->mng_family == AF_UNSPEC){
         ss |= selector_register(selector, mng_socket6, &mng,OP_READ, NULL);
         debug(etiqueta, ss, "Registered IPv6 master socket on selector", socket6);
         ss |= selector_register(selector, mng_socket, &mng,OP_READ, NULL);
         debug(etiqueta, ss, "Registered IPv4 master socket on selector", socket);
     }
-    if(args->socks_family == AF_INET){
+    if(args->mng_family == AF_INET){
         ss |= selector_register(selector, mng_socket, &mng,OP_READ, NULL);
         debug(etiqueta, ss, "Registering IPv4 master socket on selector", 0);
     }
-    if(args->socks_family == AF_INET6){
+    if(args->mng_family == AF_INET6){
         ss |= selector_register(selector, mng_socket6, &mng,OP_READ, NULL);
         debug(etiqueta, ss, "Registering IPv6 master socket on selector", 0);
     }

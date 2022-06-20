@@ -70,9 +70,8 @@ unsigned request_resolv_done(struct selector_key *key) {
     if (data->origin_resolution == NULL) {
         debug(etiqueta, 0, "Error FQDN resolution came back empty -> REQUEST_WRITE to reply error to client", key->fd);
         data->orig.conn.status = status_general_socks_server_failure;
-        request_marshall(data->orig.conn.status, &data->write_buffer);
-        selector_set_interest_key(key, OP_WRITE);
-        return REQUEST_WRITE;
+        data->client.request.status=status_general_socks_server_failure;
+        return error_handler(data->client.request.status, key);
     }
 
     //// Seteo current

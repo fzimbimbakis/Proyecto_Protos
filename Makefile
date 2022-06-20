@@ -49,6 +49,7 @@ clean:
 	rm -f ./src/Etapas/*.o
 	rm -f ./src/*.o
 	rm -f ./src/password_dissector/*.o
+	rm -f ./src/client/*.o
 
 
 .PHONY: all clean client server

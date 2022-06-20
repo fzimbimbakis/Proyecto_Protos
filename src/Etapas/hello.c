@@ -136,6 +136,11 @@ void hello_read_init(const unsigned state, struct selector_key *key) {
     d->wb                              = &(ATTACHMENT(key)->write_buffer);
     d->method = 0xFF;
     d->parser = malloc(sizeof(*(d->parser)));
+    d->status=HELLO_SUCCESS;
+    if(d->parser==NULL){
+        d->status=HELLO_ERROR;
+        return;
+    }
     d->parser->data = &(d->method);
     d->parser->on_authentication_method = on_hello_method;
     if(ATTACHMENT(key)->isSocks) {
@@ -166,6 +171,11 @@ unsigned hello_read(struct selector_key *key) {
     char * etiqueta = "HELLO READ";
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
+
+    if(d->status==HELLO_ERROR){
+        debug(etiqueta, 0, "Hello read init error", key->fd);
+        return ATTACHMENT(key)->error_state;
+    }
     unsigned  ret      = HELLO_READ;
     bool  error    = false;
     uint8_t *ptr;
@@ -224,8 +234,12 @@ void hello_read_close(const unsigned state, struct selector_key *key)
     char * etiqueta = "HELLO READ CLOSE";
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
-    hello_parser_close(d->parser);
-    free(d->parser);
+
+    if(d->parser!=NULL){
+        hello_parser_close(d->parser);
+        free(d->parser);
+    }
+
     debug(etiqueta, 0, "Finished stage", key->fd);
 }
 
