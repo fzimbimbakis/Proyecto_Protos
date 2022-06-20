@@ -10,6 +10,7 @@
 #include "../../include/clientArgs.h"
 #include "../../include/debug.h"
 #include "../../include/clientUtils.h"
+#include <errno.h>
 
 
 #define MAX 80
@@ -43,61 +44,56 @@ int main(const int argc, const char **argv)
 
     int debug_option = args->debug;
     debug_init(debug_option);
-
-    /**
-     * int sock= socket(args->mng_family,SOCK_STREAM,IPPROTO_TCP);
-    if (sock < 0) {
-        debug("FATAL", sock, "socket() failed",0);
-    }
-
-
-    int conn;
-    if(args->mng_family == AF_INET || args->mng_family==AF_UNSPEC){
-        conn= connect(sock,(const struct sockaddr*) &args->mng_addr_info,args->mng_addr_info.sin_len);
-    }else{
-        conn= connect(sock,(const struct sockaddr*) &args->mng_addr_info6,args->mng_addr_info6.sin6_len);
-    }
-    if (conn < 0) {
-        debug("FATAL", conn, "connect() failed",0);
-    }
-     */
-
     int sockfd;
-    struct sockaddr_in servaddr;
-
-    // socket create and verification
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
-        printf("socket creation failed...\n");
-        exit(0);
+    switch (args->mng_family) {
+        case AF_UNSPEC:{
+            sockfd= socket(AF_INET, SOCK_STREAM,IPPROTO_TCP);
+            if (sockfd < 0) {
+                debug("M16 CLIENT FATAL", sockfd, "ipv4 socket() failed",0);
+            }
+            if (connect(sockfd,(const struct sockaddr*) &args->mng_addr_info, sizeof(struct sockaddr)) < 0) {
+                debug("M16 CLIENT FATAL", 0, "ipv4 connect() failed",0);
+                debug("M16 CLIENT FATAL", 0, strerror(errno),0);
+                goto end;
+            }
+            break;
+        }
+        case AF_INET:{
+            sockfd= socket(AF_INET, SOCK_STREAM,IPPROTO_TCP);
+            if (sockfd < 0) {
+                debug("M16 CLIENT FATAL", sockfd, "ipv4 socket() failed",0);
+            }
+            if (connect(sockfd,(const struct sockaddr*) &args->mng_addr_info, sizeof(struct sockaddr)) < 0) {
+                debug("M16 CLIENT FATAL", 0, "ipv4 connect() failed",0);
+                debug("M16 CLIENT FATAL", 0, strerror(errno),0);
+                goto end;
+            }
+            break;
+        }
+        case AF_INET6:{
+            sockfd= socket(AF_INET6, SOCK_STREAM,IPPROTO_TCP);
+            if (sockfd < 0) {
+                debug("M16 CLIENT FATAL", sockfd, "ipv6 socket() failed",0);
+            }
+            if (connect(sockfd,(const struct sockaddr*) &args->mng_addr_info6, sizeof(struct sockaddr_in6)) < 0) {
+                debug("M16 CLIENT FATAL", 0, "ipv6 connect() failed",0);
+                debug("M16 CLIENT FATAL", 0, strerror(errno),0);
+                goto end;
+            }
+            break;
+        }
     }
-    else
-        printf("Socket successfully created..\n");
-    bzero(&servaddr, sizeof(servaddr));
-
-    // assign IP, PORT
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    servaddr.sin_port = htons(PORT);
-
-    // connect the client socket to server socket
-    if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0) {
-        printf("connection with the server failed...\n");
-        exit(0);
-    }
-    else
-        printf("connected to the server..\n");
 
 
     int ret=handshake(sockfd, args->user);
     if(ret < 0)
-        goto error;
+        goto end;
 
 
 
     uint8_t response=handshake_response(sockfd);
     if(response==0xFF)
-        goto error;
+        goto end;
 
     if(response==0x02) {
         send_credentials(sockfd, args->user);
@@ -107,14 +103,14 @@ int main(const int argc, const char **argv)
     response=credentials_response(sockfd);
     if(response!=0x00) {
         printf("Error on user authentication.\n");
-        goto error;
+        goto end;
     }
 
 
     int req_index;
     ret= send_request(sockfd, &req_index);
     if(ret < 0)
-        goto error;
+        goto end;
 
     request_response(sockfd, req_index);
 
@@ -123,8 +119,8 @@ int main(const int argc, const char **argv)
     return 0;
 
 
-    error:
-    printf("error\n");
+    end:
+    printf("end\n");
     close(sockfd);
     free(args->user);
     free(args);

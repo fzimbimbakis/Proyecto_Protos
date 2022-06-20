@@ -43,7 +43,7 @@ int parse_args(const int argc, char *const * argv, struct m16args *args) {
 
     //// Default values
 
-    args->mng_addr = "127.0.0.1";
+    args->mng_addr = "0.0.0.0";
     args->mng_addr_6 = "::";
     args->mng_port = 8080;
     args->mng_family = AF_UNSPEC;
@@ -55,7 +55,7 @@ int parse_args(const int argc, char *const * argv, struct m16args *args) {
     while (true) {
         int option_index = 0;
 
-        c = getopt_long(argc, argv, "dD:u:L:P", NULL, &option_index);
+        c = getopt_long(argc, argv, "dD:L:P:u:", NULL, &option_index);
         if (c == -1)
             break;
 
@@ -65,11 +65,6 @@ int parse_args(const int argc, char *const * argv, struct m16args *args) {
                 break;
             case 'D':
                 args->debug = FILE_DEBUG;
-                break;
-            case 'u':
-                aux = user(optarg, args->user);
-                if(aux == -1)
-                    return -1;
                 break;
             case 'L':
                 args->mng_family = address_processing(optarg, &args->mng_addr_info, &args->mng_addr_info6, args->mng_port);
@@ -91,6 +86,11 @@ int parse_args(const int argc, char *const * argv, struct m16args *args) {
                 args->mng_port = (unsigned short)aux;
                 args->mng_addr_info.sin_port = htons(aux);
                 args->mng_addr_info6.sin6_port = htons(aux);
+                break;
+            case 'u':
+                aux = user(optarg, args->user);
+                if(aux == -1)
+                    return -1;
                 break;
             default:
                 fprintf(stderr, "unknown argument %d.\n", c);
