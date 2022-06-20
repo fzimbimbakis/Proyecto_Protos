@@ -63,18 +63,35 @@ void mng_request_index_init(const unsigned state, struct selector_key *key) {
     d->wb = &(ATTACHMENT(key)->write_buffer);
 
     int total_states = 1;
+    d->status=mng_status_succeeded;
 
     d->parser = malloc(sizeof(*d->parser));
+    if(d->parser==NULL){
+        d->status=mng_status_server_error;
+        return;
+    }
 
     d->parser->size = total_states;
 
     d->parser->states = malloc(sizeof(parser_substate *) * total_states);
+    if(d->parser->states==NULL){
+        d->status=mng_status_server_error;
+        return;
+    }
 
     //// Read index
     d->parser->states[0] = malloc(sizeof(parser_substate));
+    if(d->parser->states[0]==NULL){
+        d->status=mng_status_server_error;
+        return;
+    }
     d->parser->states[0]->state = long_read;
     d->parser->states[0]->remaining = d->parser->states[0]->size = 1;
     d->parser->states[0]->result = malloc(sizeof(uint8_t) + 1);
+    if(d->parser->states[0]->result==NULL){
+        d->status=mng_status_server_error;
+        return;
+    }
     d->parser->states[0]->check_function = checkIndex;
 
     parser_init(d->parser);
@@ -87,6 +104,14 @@ unsigned mng_request_index_read(struct selector_key *key) {
     char *etiqueta = "MNG REQUEST INDEX READ";
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct mng_request_st *d = &ATTACHMENT(key)->client.mng_request;
+
+    if(d->status!=mng_status_succeeded){
+        debug(etiqueta, 0, "Error from mng request index INIT", key->fd);
+        status_mng_marshal(d->wb, d->status);
+        if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_WRITE))
+            return MNG_ERROR;
+        return MNG_REQUEST_WRITE;
+    }
     unsigned ret = MNG_REQUEST_READ_INDEX;
     bool error = false;
     uint8_t *ptr;
@@ -95,8 +120,13 @@ unsigned mng_request_index_read(struct selector_key *key) {
 
     debug(etiqueta, 0, "Reading from client", key->fd);
     ptr = buffer_write_ptr(d->rb, &count);
-    if (count <= 0)
-        return MNG_ERROR;
+    if (count <= 0){
+        d->status=mng_status_server_error;
+        status_mng_marshal(d->wb, d->status);
+        if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_WRITE))
+            return MNG_ERROR;
+        return MNG_REQUEST_WRITE;
+    }
     n = recv(key->fd, ptr, 1, 0);       //// Leo solo uno para ver el index
     if (n > 0) {
 
@@ -112,7 +142,8 @@ unsigned mng_request_index_read(struct selector_key *key) {
                 debug(etiqueta, mng_status_index_not_supported,
                       "MNG index no supported -> Change to write to notify client", 0);
                 d->status = mng_status_index_not_supported;
-                if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
+                status_mng_marshal(d->wb, d->status);
+                if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_WRITE))
                     return MNG_ERROR;
                 ret = MNG_REQUEST_WRITE;
             } else {
@@ -141,14 +172,20 @@ void mng_request_index_close(const unsigned state, struct selector_key *key) {
     char *etiqueta = "MNG READ INDEX CLOSE";
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct parser *p = ATTACHMENT(key)->client.mng_request.parser;
-    for (int i = 0; i < p->size; ++i) {
-        if (p->states[i]->state == long_read) {
-            free(p->states[i]->result);
+    if(p!=NULL) {
+        if (p->states != NULL) {
+            for (int i = 0; i < p->size; ++i) {
+                if (p->states[i] != NULL) {
+                    if (p->states[i]->state == long_read && p->states[i]->result != NULL) {
+                        free(p->states[i]->result);
+                    }
+                    free(p->states[i]);
+                }
+            }
+            free(p->states);
         }
-        free(p->states[i]);
+        free(p);
     }
-    free(p->states);
-    free(p);
     debug(etiqueta, 0, "Finished stage", key->fd);
 }
 
@@ -161,18 +198,24 @@ void mng_request_init(const unsigned state, struct selector_key *key) {
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->wb = &(ATTACHMENT(key)->write_buffer);
 
+    d->status=mng_status_succeeded;
+
     switch (ATTACHMENT(key)->client.mng_request.index) {
         case mng_request_index_add_user: {
-            mng_request_index_add_user_parser_init(key);
+            if(mng_request_index_add_user_parser_init(key)==NULL)
+                return;
+
             break;
         }
         case mng_request_index_delete_user: {
-            mng_request_index_delete_user_parser_init(key);
+            if(mng_request_index_delete_user_parser_init(key)==NULL)
+                return;
             break;
         }
         case mng_request_index_disable_auth:
         case mng_request_index_disable_password_disectors:
-            mng_request_index_yes_no_value(key);
+            if(mng_request_index_yes_no_value(key)==NULL)
+                return;
             break;
         default: {
             debug(etiqueta, 0, "MNG REQUEST INIT WITH INVALID INDEX. Bug!", 0);
@@ -187,6 +230,12 @@ unsigned mng_request_read(struct selector_key *key) {
     char *etiqueta = "MNG REQUEST READ";
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct mng_request_st *d = &ATTACHMENT(key)->client.mng_request;
+    if(d->status!=mng_status_succeeded){
+        status_mng_marshal(d->wb, d->status);
+        if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_WRITE))
+            return MNG_ERROR;
+        return MNG_REQUEST_WRITE;
+    }
     unsigned ret = MNG_REQUEST_READ;
     bool error = false;
     uint8_t *ptr;
@@ -232,14 +281,20 @@ void mng_request_close(const unsigned state, struct selector_key *key) {
     char *etiqueta = "MNG READ INDEX CLOSE";
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct parser *p = ATTACHMENT(key)->client.mng_request.parser;
-    for (int i = 0; i < p->size; ++i) {
-        if (p->states[i]->state == long_read && p->states[i]->result != NULL) {
-            free(p->states[i]->result);
+    if(p!=NULL) {
+        if (p->states != NULL) {
+            for (int i = 0; i < p->size; ++i) {
+                if (p->states[i] != NULL) {
+                    if (p->states[i]->state == long_read && p->states[i]->result != NULL) {
+                        free(p->states[i]->result);
+                    }
+                    free(p->states[i]);
+                }
+            }
+            free(p->states);
         }
-        free(p->states[i]);
+        free(p);
     }
-    free(p->states);
-    free(p);
     debug(etiqueta, 0, "Finished stage", key->fd);
 }
 
@@ -574,27 +629,51 @@ struct parser *mng_request_index_add_user_parser_init(struct selector_key *key) 
     int total_states = 4;
 
     d->parser = malloc(sizeof(*d->parser));
+    if(d->parser==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
 
     d->parser->size = total_states;
 
     d->parser->states = malloc(sizeof(parser_substate *) * total_states);
+    if(d->parser->states==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
 
     //// Nread for username
     d->parser->states[0] = malloc(sizeof(parser_substate));
+    if(d->parser->states[0]==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
     d->parser->states[0]->state = read_N;
 
     //// Read username
     d->parser->states[1] = malloc(sizeof(parser_substate));
+    if(d->parser->states[1]==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
     d->parser->states[1]->state = long_read;
     d->parser->states[1]->result = NULL;
     d->parser->states[1]->check_function = NULL;
 
     //// Nread for password
     d->parser->states[2] = malloc(sizeof(parser_substate));
+    if(d->parser->states[2]==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
     d->parser->states[2]->state = read_N;
 
     //// Read password
     d->parser->states[3] = malloc(sizeof(parser_substate));
+    if(d->parser->states[3]==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
     d->parser->states[3]->state = long_read;
     d->parser->states[3]->result = NULL;
     d->parser->states[3]->check_function = NULL;
@@ -615,17 +694,33 @@ struct parser *mng_request_index_delete_user_parser_init(struct selector_key *ke
     int total_states = 2;
 
     d->parser = malloc(sizeof(*d->parser));
+    if(d->parser==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
 
     d->parser->size = total_states;
 
     d->parser->states = malloc(sizeof(parser_substate *) * total_states);
+    if(d->parser->states==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
 
     //// Nread for username
     d->parser->states[0] = malloc(sizeof(parser_substate));
+    if(d->parser->states[0]==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
     d->parser->states[0]->state = read_N;
 
     //// Read username
     d->parser->states[1] = malloc(sizeof(parser_substate));
+    if(d->parser->states[1]==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
     d->parser->states[1]->state = long_read;
     d->parser->states[1]->result = NULL;
     d->parser->states[1]->check_function = NULL;
@@ -646,16 +741,32 @@ struct parser *mng_request_index_yes_no_value(struct selector_key *key) {
     int total_states = 1;
 
     d->parser = malloc(sizeof(*d->parser));
+    if(d->parser==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
 
     d->parser->size = total_states;
 
     d->parser->states = malloc(sizeof(parser_substate *) * total_states);
+    if(d->parser->states==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
 
     //// Read version
     d->parser->states[0] = malloc(sizeof(parser_substate));
+    if(d->parser->states[0]==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
     d->parser->states[0]->state = long_read;
     d->parser->states[0]->remaining = d->parser->states[0]->size = 1;
     d->parser->states[0]->result = malloc(sizeof(uint8_t) + 1);
+    if(d->parser->states[0]->result==NULL){
+        d->status=mng_status_server_error;
+        return NULL;
+    }
     d->parser->states[0]->result[1] = 0;
     d->parser->states[0]->check_function = NULL;
 

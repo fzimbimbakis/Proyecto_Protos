@@ -7,6 +7,7 @@
 #include "buffer.h"
 #include "selector.h"
 #include "request_parser.h"
+#include "socks5nio.h"
 #include "states.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -168,6 +169,13 @@ bool request_is_done(const enum request_state state, bool *error);
  */
 int request_marshall(int status, buffer * b);
 
+/**
+ * Se encarga de llamar al request_write luego de setear el buffer de escritura con el status del error
+ * @param status
+ * @param key
+ * @return
+ */
+enum socks_v5state error_handler(enum socks_reply_status status, struct selector_key *key );
 
 
 #endif //PROYECTO_PROTOS_REQUEST_H

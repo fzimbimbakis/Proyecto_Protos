@@ -90,44 +90,51 @@ int main(const int argc, const char **argv)
 
 
     int ret=handshake(sockfd, args->user);
-    if(ret < 0)
-        goto error;
+    if(ret < 0){
+        printf("Error in sending handshake\n");
+        goto end;
+    }
 
 
 
     uint8_t response=handshake_response(sockfd);
-    if(response==0xFF)
-        goto error;
+    if(response==0xFF) {
+        printf("Error in handshake response\n");
+        goto end;
+    }
 
     if(response==0x02) {
-        send_credentials(sockfd, args->user);
+        if(send_credentials(sockfd, args->user)< 0) {
+            printf("Error sending credentials\n");
+            goto end;
+        }
         //printf("send credentials");
     }
 
     response=credentials_response(sockfd);
     if(response!=0x00) {
         printf("Error on user authentication.\n");
-        goto error;
+        goto end;
     }
 
 
     int req_index;
     ret= send_request(sockfd, &req_index);
-    if(ret < 0)
-        goto error;
+    if(ret < 0){
+        printf("Send request error\n");
+        goto end;
+    }
 
-    request_response(sockfd, req_index);
-
-    close(sockfd);
-
-    return 0;
+    if(request_response(sockfd, req_index) <0)
+        goto end;
 
 
-    error:
-    printf("error\n");
+    end:
     close(sockfd);
     free(args->user);
     free(args);
+
+    return 0;
 
 }
 

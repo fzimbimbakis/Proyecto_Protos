@@ -1,6 +1,6 @@
 #include "../../include/request_parser.h"
-#include "debug.h"
-#include "request.h"
+#include "../../include/debug.h"
+#include "../../include/request.h"
 #include <string.h>
 #include <netinet/in.h>
 
@@ -26,11 +26,15 @@ static enum request_state cmd(request_parser *p, uint8_t b);
 
 static enum request_state version(uint8_t b);
 
-void request_parser_init(struct request_parser *parser) {
+int request_parser_init(struct request_parser *parser) {
     parser->state = request_version;
     parser->read = 0;
     parser->remaining = 0;
     parser->request = malloc(sizeof(struct request));//struct request
+    if(parser->request == NULL){
+        return -1;
+    }
+    return 0;
 }
 
 void request_parser_close(struct request_parser *parser) {

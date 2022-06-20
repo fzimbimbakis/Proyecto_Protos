@@ -19,6 +19,15 @@
 #define MSG_NOSIGNAL 0x2000  /* don't raise SIGPIPE */
 #endif
 
+
+
+enum socks_v5state error_handler(enum socks_reply_status status, struct selector_key *key ){
+    struct socks5 * data= ATTACHMENT(key);
+    request_marshall(status, &data->write_buffer);
+    selector_set_interest_key(key, OP_WRITE);
+    return REQUEST_WRITE;
+}
+
 //// INIT
 void
 request_init(const unsigned state, struct selector_key *key)
@@ -31,14 +40,24 @@ request_init(const unsigned state, struct selector_key *key)
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->wb= &(ATTACHMENT(key)->write_buffer);
 
+    //// Status
+    d->status=status_succeeded;
+
     //// Parser
     d->parser = malloc(sizeof(*(d->parser)));
-    request_parser_init(d->parser);
+    if(d->parser == NULL){
+        d->status=status_general_socks_server_failure;
+        error_handler(d->status, key);
+    }
+    if (request_parser_init(d->parser) < 0){
+        d->status=status_general_socks_server_failure;
+        error_handler(d->status, key);
+    }
     d->parser->request = malloc(sizeof(*d->parser->request));
-
-    //// Status
-//    d->status = malloc(sizeof(enum socks_reply_status));
-    d->status=status_succeeded;
+    if(d->parser->request == NULL){
+        d->status=status_general_socks_server_failure;
+        error_handler(d->status, key);
+    }
 
     //// FDs
     d->client_fd= &ATTACHMENT(key)->client_fd;
@@ -69,10 +88,15 @@ void request_close(const unsigned state, struct selector_key *key){
 unsigned request_read(struct selector_key *key)
 {
 
+
     char * etiqueta = "REQUEST READ";
     debug(etiqueta, 0, "Starting stage", key->fd);
 
     struct request_st *d = &ATTACHMENT(key)->client.request;
+
+    if(d->status != status_succeeded){ //por si fallo en el init
+        return REQUEST_WRITE;
+    }
 
     buffer *b = d->rb;
     unsigned ret = REQUEST_READ;
@@ -144,17 +168,16 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
 
     if(d->parser->request->cmd != socks_req_cmd_connect){
         debug(etiqueta, 0, "COMMAND NOT SUPPORTED", key->fd);
-        data->orig.conn.status = status_general_socks_server_failure;
-        request_marshall(data->orig.conn.status, &data->write_buffer);
-        selector_set_interest_key(key, OP_WRITE);
-        return REQUEST_WRITE;
+        d->status=status_command_not_supported;
+        //data->orig.conn.status = status_general_socks_server_failure;
+        return error_handler(d->status, key);
     }
 
 //    int family;
 //    uint16_t port;
 //    struct sockaddr_storage * addr;
 
-    // esto mejoraría enormemente de haber usado sockaddr_storage en el request
+// esto mejoraría enormemente de haber usado sockaddr_storage en el request
     switch (d->parser->request->dest_addr_type) {
 
         //// IPv4
@@ -193,21 +216,19 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
 
                 if(k==NULL){
                     debug(etiqueta, 0, "Malloc error -> REQUEST_WRITE to reply error to client", key->fd);
-                    data->orig.conn.status = status_general_socks_server_failure;
-                    request_marshall(data->orig.conn.status, &data->write_buffer);
-                    selector_set_interest_key(key, OP_WRITE);
-                    return REQUEST_WRITE;
+                    //data->orig.conn.status = status_general_socks_server_failure;
+                    d->status=status_general_socks_server_failure;
+                    return error_handler(d->status, key);
                 }
 
                 debug(etiqueta, 0, "Creating thread for FQDN resolve", key->fd);
                 memcpy(k, key, sizeof(*k));
                 if(-1 == pthread_create(&tid, 0, request_resolv_blocking, k)){
                     debug(etiqueta, 0, "Error creating thread for FQDN resolve -> REQUEST_WRITE to reply error to client", key->fd);
-                    data->orig.conn.status = status_general_socks_server_failure;
-                    request_marshall(data->orig.conn.status, &data->write_buffer);
-                    selector_set_interest_key(key, OP_WRITE);
                     free(k);
-                    return REQUEST_WRITE;
+                    d->status=status_general_socks_server_failure;
+                    //data->orig.conn.status = status_general_socks_server_failure;
+                    return error_handler(d->status, key);
                 }
 
                 debug(etiqueta, 0, "Passing to REQUEST_RESOLV (OP_NOOP interest) state to wait FQDN resolve", key->fd);
@@ -218,10 +239,8 @@ unsigned request_process(struct selector_key *key, struct request_st *d)
             }
             default: {
                 debug(etiqueta, 0, "Address type not supported -> REQUEST_WRITE to reply error to client", key->fd);
-                data->orig.conn.status = status_address_type_not_supported;
-                request_marshall(data->orig.conn.status, &data->write_buffer);
-                selector_set_interest_key(key, OP_WRITE);
-                return REQUEST_WRITE;
+                d->status = status_address_type_not_supported;
+                return error_handler(d->status, key);
             }
 
     }
@@ -245,12 +264,9 @@ unsigned request_write(struct selector_key *key)
     debug(etiqueta, count, "Writing to client", key->fd);
     //signal(SIGPIPE, SIG_IGN);
     n = send(key->fd, ptr, count, MSG_NOSIGNAL);
-    if (n == -1)
-    {
+    if (n == -1){
         ret = ERROR;
-    }
-    else
-    {
+    }else{
         debug(etiqueta, n, "Wrote to client", key->fd);
         buffer_read_adv(b, n);
         if (!buffer_can_read(b))

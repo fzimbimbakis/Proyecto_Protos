@@ -1,5 +1,6 @@
 #include "../../include/clientUtils.h"
 #include "../../include/clientArgs.h"
+#include "../../include/states.h"
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -229,8 +230,21 @@ uint32_t cast_uint32(char* buffer){
 int request_response(int sockfd, int req_index){
     uint8_t buffer[500];
     recv(sockfd, buffer, 500, 0);
-    if(buffer[0]!=0x00)
+    if(buffer[0]!=0x00){
+        switch (buffer[0]) {
+            case mng_status_index_not_supported:
+                printf("Index not supported\n");
+                break;
+            case mng_status_server_error:
+                printf("Server error\n");
+                break;
+            case mng_status_max_users_reached:
+                printf("Max users reached\n");
+                break;
+        }
         return -1;
+    }
+
 
     uint32_t stats;
 
