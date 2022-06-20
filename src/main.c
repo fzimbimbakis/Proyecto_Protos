@@ -31,6 +31,7 @@
 #include "../include/args.h"
 #include "../include/mng_nio.h"
 #include "debug.h"
+#define CREDENTIALS_PATH "../credentials.txt"
 #define SELECTOR_INITIAL_ELEMENTS 1024
 static bool done = false;
 #define DEFAULT_AUTH_METHOD 0x02
@@ -75,6 +76,8 @@ sigterm_handler(const int signal) {
 }
 
 struct users users[MAX_USERS];
+struct users admins[MAX_USERS];
+int nadmins = 0;
 int nusers = 0;
 
 int
@@ -98,6 +101,19 @@ main(const int argc, const char **argv) {
         free(args);
         exit(1);
     }
+
+    FILE * fd = fopen(CREDENTIALS_PATH, "r");
+    char user[255], pass[255], * newUsername, * newPassword;
+    nadmins = 0;
+    while (nadmins < MAX_USERS && fscanf(fd, "%s %s", user, pass) != EOF){
+        newUsername = malloc(strlen(user) + 1);
+        newPassword = malloc(strlen(pass) + 1);
+        strcpy(newUsername, (char *)user);
+        strcpy(newPassword, (char *)pass);
+        admins[nadmins].name = newUsername;
+        admins[nadmins++].pass = newPassword;
+    }
+
 
     /* Debugging */
     char * etiqueta = "MAIN";
@@ -347,5 +363,11 @@ main(const int argc, const char **argv) {
     if(socket6 >= 0) {
         close(socket6);
     }
+
+    for (int i = 0; i < nadmins; ++i) {
+        free(admins[i].name);
+        free(admins[i].pass);
+    }
+
     return ret;
 }

@@ -8,6 +8,8 @@
 #include <stdlib.h>
 extern struct users users[MAX_USERS];
 extern int nusers;
+extern struct users admins[MAX_USERS];
+extern int nadmins;
 #ifndef MSG_NOSIGNAL
 //// For mac compilation only
 #define MSG_NOSIGNAL 0x2000  /* don't raise SIGPIPE */
@@ -257,10 +259,9 @@ uint8_t checkCredentials(uint8_t *username, uint8_t *password, struct selector_k
  * @return
  */
 uint8_t checkMngCredentials(uint8_t *username, uint8_t *password) {
-    //// TODO: Change to real MNG credentials
-    for (int i = 0; i < nusers; ++i) {
-        if (strcmp((char *) username, users[i].name) == 0) {
-            if (strcmp((char *) password, users[i].pass) == 0)
+    for (int i = 0; i < nadmins; ++i) {
+        if (strcmp((char *) username, admins[i].name) == 0) {
+            if (strcmp((char *) password, admins[i].pass) == 0)
                 return 0x00;
         }
     }
