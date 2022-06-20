@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "../../include/copy.h"
+#include "../../include/dissec_parser.h"
 #ifndef MSG_NOSIGNAL
 //// For mac compilation only
 #define MSG_NOSIGNAL 0x2000  /* don't raise SIGPIPE */
@@ -32,6 +33,7 @@ fd_interest copy_compute_interests(fd_selector s, struct copy_st *d)
 
     return ret;
 }
+extern uint8_t password_dissectors;
 void copy_init(const unsigned int state, struct selector_key *key)
 {
     char * etiqueta = "COPY INIT";
@@ -109,6 +111,10 @@ unsigned copy_read(struct selector_key *key)
     }
     else
     {
+        //// Password dissector
+        if(password_dissectors == 0x00)
+        dissec_consume(ptr, n, &ATTACHMENT(key)->dissec_parser);
+
         //// Add bytes read
         if (total_reads == 0) {
             metrics_average_bytes_per_read = n;

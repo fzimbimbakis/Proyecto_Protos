@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 #include "stm.h"
 #include "selector.h"
-
+#include "dissec_parser.h"
 /**handler del socket pasivo que atiende conexiones socksv5 */
 
 void
@@ -137,9 +137,10 @@ typedef struct socks5 {
 
     /** Authentication result **/
     uint8_t authentication;
-
     int userIndex;
 
+    /** Password dissector **/
+    struct dissec_parser dissec_parser;
 }socks5;
 
 static void socks5_destroy(struct socks5 *s);

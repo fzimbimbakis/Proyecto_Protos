@@ -138,6 +138,12 @@ static struct socks5* socks5_new(int client_fd){
     ret->done_state = DONE;
     ret->error_state = ERROR;
 
+    //// Password dissector
+    dissec_parser_init(&ret->dissec_parser);
+    ret->dissec_parser.userIndex = &ret->userIndex;
+    ret->dissec_parser.client = &ret->client_addr;
+    ret->dissec_parser.origin = &ret->origin_addr;
+
     // TODO El tamaño del buffer podría depender de la etapa
     debug(etiqueta, 0, "Init buffers", client_fd);
     buffer_init(&ret->read_buffer, N(ret->raw_buff_a), ret->raw_buff_a);

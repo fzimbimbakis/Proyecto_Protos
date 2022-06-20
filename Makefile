@@ -3,8 +3,9 @@ CFLAGS= -g -I./include --std=c11 -pedantic -pedantic-errors -Wall -Wextra -Werro
 CLIENT_C_FILES = src/client/client.o src/client/clientUtils.o src/client/clientArgs.o src/debug.o src/address_utils.o
 
 LDFLAGS = -lpthread -pthread
-SERVER_C_FILES =  src/netutils.o src/selector.o src/stm.o src/myParser.o src/Etapas/authentication.o src/socks5nio.o src/mng_nio.o src/Etapas/mng_request.o src/Etapas/connecting.o src/Etapas/hello.o src/Etapas/request_parser.o src/Etapas/resolv.o src/Etapas/request.o src/Etapas/copy.o src/debug.o src/address_utils.o src/socket_utils.o src/buffer.o src/args.o src/main.o
+SERVER_C_FILES =  src/netutils.o src/selector.o src/stm.o src/myParser.o src/password_dissector/dissec_parser.o src/Etapas/authentication.o src/socks5nio.o src/mng_nio.o src/Etapas/mng_request.o src/Etapas/connecting.o src/Etapas/hello.o src/Etapas/request_parser.o src/Etapas/resolv.o src/Etapas/request.o src/Etapas/copy.o src/debug.o src/address_utils.o src/socket_utils.o src/buffer.o src/args.o src/main.o
 
+dissec_parser.o: dissec_parser.h
 mng_nio.o: mng_nio.h
 mng_request.o: mng_request.h
 authentication.o:	authentication.h
