@@ -7,6 +7,7 @@
 
 #define IPV4_LEN 4
 #define IPV6_LEN 16
+#define MAX_IP_LENGTH 45
 extern const struct fd_handler socks5_handler;
 
 enum socks_reply_status connection(struct selector_key *key);
@@ -97,8 +98,8 @@ unsigned connecting_write(struct selector_key *key){
     timeinfo = localtime ( &rawtime );
     struct sockaddr * origAddr = (struct sockaddr *) &ATTACHMENT(key)->origin_addr;
     struct sockaddr * clientAddr = (struct sockaddr *) &ATTACHMENT(key)->client_addr;
-    char * orig = malloc(ATTACHMENT(key)->origin_addr_len);
-    char * client = malloc(ATTACHMENT(key)->client_addr_len);
+    char * orig = malloc(MAX_IP_LENGTH);
+    char * client = malloc(MAX_IP_LENGTH);
     //printf("%s\t to: %s \t from: %s \t %s\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo));
 
 
@@ -113,7 +114,7 @@ unsigned connecting_write(struct selector_key *key){
         //// Error on getsockopt
         debug(etiqueta, 0, "Error on getsockopt -> REQUEST_WRITE to reply error to client", key->fd);
         data->orig.conn.status=status_general_socks_server_failure;
-        printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo), data->orig.conn.status);
+        printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), asctime (timeinfo), data->orig.conn.status);
         return error_handler(data->orig.conn.status, key);
     }
 
@@ -127,7 +128,7 @@ unsigned connecting_write(struct selector_key *key){
             metrics_max_concurrent_connections = metrics_concurrent_connections;
 
         debug(etiqueta, 0, "Connection succeed", key->fd);
-        printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo), data->orig.conn.status);
+        printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), asctime (timeinfo), data->orig.conn.status);
 
         if(data->client.request.addr_family == socks_req_addrtype_domain)
             freeaddrinfo(data->origin_resolution);
@@ -143,7 +144,7 @@ unsigned connecting_write(struct selector_key *key){
         if(data->origin_resolution_current==NULL){
             debug(etiqueta, 0, "Connection refused -> REQUEST_WRITE to reply error to client", key->fd);
             data->orig.conn.status= errno_to_socks(error);
-            printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo), data->orig.conn.status);
+            printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), asctime (timeinfo), data->orig.conn.status);
 
             return error_handler(data->orig.conn.status, key);
         }
@@ -172,7 +173,7 @@ unsigned connecting_write(struct selector_key *key){
         } else{
             debug(etiqueta, 0, "No more IPs -> REQUEST_WRITE to reply error to client", key->fd);
             data->orig.conn.status=errno_to_socks(error);
-            printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo), data->orig.conn.status);
+            printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), asctime (timeinfo), data->orig.conn.status);
 
             if(data->client.request.addr_family == socks_req_addrtype_domain)
                 freeaddrinfo(data->origin_resolution);
