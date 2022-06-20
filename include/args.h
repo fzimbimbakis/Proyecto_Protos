@@ -30,6 +30,7 @@ struct socks5args {
 
     bool            disectors_enabled;
 
+    char * credentials;
 };
 
 /**

@@ -111,11 +111,10 @@ int parse_args(const int argc, char *const * argv, struct socks5args *args) {
 
     int c;
     int aux;
-    long long_aux;
     while (true) {
         int option_index = 0;
 
-        c = getopt_long(argc, argv, "dDhl:L:Np:P:u:v", NULL, &option_index);
+        c = getopt_long(argc, argv, "dDhl:L:Np:P:f:u:v", NULL, &option_index);
         if (c == -1)
             break;
 
@@ -125,13 +124,6 @@ int parse_args(const int argc, char *const * argv, struct socks5args *args) {
                 break;
             case 'D':
                 args->debug = FILE_DEBUG;
-                break;
-            case 'b':
-                // TODO(bruno) Esto no esta implementado.
-                long_aux = buffer_size(optarg);
-                if(aux == -1)
-                    return -1;
-                args->buffer_size = (unsigned short)long_aux;
                 break;
             case 'h':
                 return usage(argv[0]);
@@ -179,6 +171,9 @@ int parse_args(const int argc, char *const * argv, struct socks5args *args) {
                 args->mng_port = (unsigned short)aux;
                 args->mng_addr_info.sin_port = htons(aux);
                 args->mng_addr_info6.sin6_port = htons(aux);
+                break;
+            case 'f':
+                args->credentials = optarg;
                 break;
             case 'u':
                 if(nusers >= MAX_USERS) {

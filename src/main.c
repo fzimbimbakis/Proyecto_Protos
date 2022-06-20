@@ -30,6 +30,7 @@
 #include "../include/socks5nio.h"
 #include "../include/args.h"
 #include "../include/mng_nio.h"
+#include <stdio.h>
 #include "debug.h"
 #define CREDENTIALS_PATH "../credentials.txt"
 #define SELECTOR_INITIAL_ELEMENTS 1024
@@ -102,17 +103,35 @@ main(const int argc, const char **argv) {
         exit(1);
     }
 
-    FILE * fd = fopen(CREDENTIALS_PATH, "r");
-    char user[255], pass[255], * newUsername, * newPassword;
-    nadmins = 0;
-    while (nadmins < MAX_USERS && fscanf(fd, "%s %s", user, pass) != EOF){
+    FILE* filePointer;
+    int bufferLength = 255;
+    size_t aux;
+    char line[bufferLength];
+    char *pass, *user, *newUsername, *newPassword;
+    debug("MAIN", 0, "Opening credentials", 0);
+    filePointer = fopen((const char *)args->credentials, "r");
+    if( filePointer == NULL ) {
+        fprintf(stderr, "Couldn't open credentials file (%s) (Use -f [file]): %s\n", args->credentials, strerror(errno));
+        exit(1);
+    }
+
+    while(fgets(line, bufferLength, filePointer)) {
+        pass = strchr(line, ' ');
+        *pass = 0;
+        pass++;
+        user = line;
+        aux = strlen(pass);
+        if(pass[aux-1] == '\n')
+            pass[--aux] = 0;
         newUsername = malloc(strlen(user) + 1);
-        newPassword = malloc(strlen(pass) + 1);
-        strcpy(newUsername, (char *)user);
-        strcpy(newPassword, (char *)pass);
+        newPassword = malloc( aux + 1);
+        strcpy(newUsername, user);
+        strcpy(newPassword, pass);
         admins[nadmins].name = newUsername;
         admins[nadmins++].pass = newPassword;
     }
+
+    fclose(filePointer);
 
 
     /* Debugging */
