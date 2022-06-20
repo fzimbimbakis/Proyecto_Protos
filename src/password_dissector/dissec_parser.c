@@ -1,11 +1,16 @@
 #include "../../include/dissec_parser.h"
-#include <ctype.h>
+//#include <ctype.h>
 #include <stdlib.h>
 #include <printf.h>
 #include "../../include/socks5nio.h"
 #include "../../include/debug.h"
 #include <sys/socket.h>
 #include <netutils.h>
+int isascii2(int c){
+ return ((c >= 0) && (c <= 127));
+}
+static uint8_t user_reserved_pop3_word[] = {0x75, 0x73, 0x65, 0x72, 0x20};
+static uint8_t pass_reserved_pop3_word[] = {0x2B, 0x4F, 0x4B, 0x0D, 0x0A, 0x70, 0x61, 0x73, 0x73, 0x20};
 
 #define BUFFER_SIZE 5
 extern struct users users[MAX_USERS];
@@ -97,7 +102,7 @@ enum dissec_parser_state user_read_handler(struct dissec_parser *p, uint8_t b) {
         return pass_word_search;
     }
 
-    if (isascii(b)) {
+    if (isascii2(b)) {
         p->username = checkSize(p->username, p->current_index);
         p->username[p->current_index++] = b;
         return user_read;
@@ -145,7 +150,7 @@ enum dissec_parser_state pass_read_handler(struct dissec_parser *p, uint8_t b) {
         return pass_read_reset(p, b);
     }
 
-    if (isascii(b)) {
+    if (isascii2(b)) {
         p->password = checkSize(p->password, p->current_index);
         p->password[p->current_index++] = b;
         return pass_read;
