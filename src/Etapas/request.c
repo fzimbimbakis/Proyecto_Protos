@@ -28,6 +28,14 @@ enum socks_v5state error_handler(enum socks_reply_status status, struct selector
     return REQUEST_WRITE;
 }
 
+enum socks_v5state error_handler_to_client(enum socks_reply_status status, struct selector_key *key ){
+    struct socks5 * data= ATTACHMENT(key);
+    request_marshall(status, &data->write_buffer);
+    selector_set_interest(key->s, data->client_fd, OP_WRITE);
+    selector_set_interest_key(key, OP_NOOP);
+    return REQUEST_WRITE;
+}
+
 //// INIT
 void
 request_init(const unsigned state, struct selector_key *key)
@@ -265,6 +273,7 @@ unsigned request_write(struct selector_key *key)
     //signal(SIGPIPE, SIG_IGN);
     n = send(key->fd, ptr, count, MSG_NOSIGNAL);
     if (n == -1){
+        debug(etiqueta, n, strerror(errno), 0);
         ret = ERROR;
     }else{
         debug(etiqueta, n, "Wrote to client", key->fd);

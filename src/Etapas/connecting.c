@@ -30,7 +30,7 @@ void connecting_init(const unsigned state, struct selector_key *key){
     if(*fd < 0){
         debug(etiqueta, *fd, "Error creating socket for origin", key->fd);
         data->orig.conn.status=status_general_socks_server_failure;
-        error_handler(data->orig.conn.status, key);
+        error_handler_to_client(data->orig.conn.status, key);
         return;
     }else
         debug(etiqueta, *fd, "Created socket for origin", key->fd);
@@ -40,12 +40,11 @@ void connecting_init(const unsigned state, struct selector_key *key){
     if(flag_setting == -1) {
         debug(etiqueta, flag_setting, "Error setting socket flags", key->fd);
         data->orig.conn.status=status_general_socks_server_failure;
-        error_handler(data->orig.conn.status, key);
+        error_handler_to_client(data->orig.conn.status, key);
         return;
     }
 
     data->orig.conn.status=connection(key);
-    return;
 
     /*fail:
     debug(etiqueta, 0, "Fail", 0);
@@ -87,7 +86,7 @@ unsigned connecting_write(struct selector_key *key){
         selector_unregister_fd(key->s, data->origin_fd);
         close(data->origin_fd);
         data->origin_fd=-1;
-        return error_handler(data->orig.conn.status, key);
+        return error_handler_to_client(data->orig.conn.status, key);
     }
 
     //TODO agregar un status al registro, quizas habria que moverlo
@@ -114,7 +113,7 @@ unsigned connecting_write(struct selector_key *key){
         debug(etiqueta, 0, "Error on getsockopt -> REQUEST_WRITE to reply error to client", key->fd);
         data->orig.conn.status=status_general_socks_server_failure;
         printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo), data->orig.conn.status);
-        return error_handler(data->orig.conn.status, key);
+        return error_handler_to_client(data->orig.conn.status, key);
     }
 
     if(error== 0){                                                              //// Check connection status
@@ -145,7 +144,7 @@ unsigned connecting_write(struct selector_key *key){
             data->orig.conn.status= errno_to_socks(error);
             printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo), data->orig.conn.status);
 
-            return error_handler(data->orig.conn.status, key);
+            return error_handler_to_client(data->orig.conn.status, key);
         }
 
         debug(etiqueta, 0, "Connection failed. Checking other IPs", key->fd);
@@ -176,7 +175,9 @@ unsigned connecting_write(struct selector_key *key){
 
             if(data->client.request.addr_family == socks_req_addrtype_domain)
                 freeaddrinfo(data->origin_resolution);
-            return error_handler(data->orig.conn.status, key);
+
+            // TODO Hay que hacer close del origin fd?
+            return error_handler_to_client(data->orig.conn.status, key);
         }
 
     }
@@ -262,7 +263,7 @@ enum socks_reply_status connection(struct selector_key *key){
         debug(etiqueta, connectResult, "Connection for origin socket failed", key->fd);
         data->client.request.status = errno_to_socks(errno);
         data->orig.conn.status=errno_to_socks(errno);
-        error_handler(data->orig.conn.status, key);
+        error_handler_to_client(data->orig.conn.status, key);
         return data->orig.conn.status;
         /*debug(etiqueta, connectResult, "Connection for origin socket failed", key->fd);
         data->client.request.status = errno_to_socks(errno);
@@ -274,7 +275,7 @@ enum socks_reply_status connection(struct selector_key *key){
         if(SELECTOR_SUCCESS != st){
             debug(etiqueta, st, "Error setting interest", key->fd);
             data->orig.conn.status=status_general_socks_server_failure;
-            error_handler(data->orig.conn.status, key);
+            error_handler_to_client(data->orig.conn.status, key);
             return data->orig.conn.status;
         }
 
@@ -283,7 +284,7 @@ enum socks_reply_status connection(struct selector_key *key){
         if(SELECTOR_SUCCESS != st){
             debug(etiqueta, st, "Error setting interest", key->fd);
             data->orig.conn.status=status_general_socks_server_failure;
-            error_handler(data->orig.conn.status, key);
+            error_handler_to_client(data->orig.conn.status, key);
             close((*fd));
             *fd=-1;
             return data->orig.conn.status;
@@ -297,7 +298,7 @@ enum socks_reply_status connection(struct selector_key *key){
         if(SELECTOR_SUCCESS != st){
             debug(etiqueta, st, "Error setting interest", key->fd);
             data->orig.conn.status=status_general_socks_server_failure;
-            error_handler(data->orig.conn.status, key);
+            error_handler_to_client(data->orig.conn.status, key);
             return data->orig.conn.status;
         }
 
@@ -306,7 +307,7 @@ enum socks_reply_status connection(struct selector_key *key){
         if(SELECTOR_SUCCESS != st){
             debug(etiqueta, st, "Error setting interest", key->fd);
             data->orig.conn.status=status_general_socks_server_failure;
-            error_handler(data->orig.conn.status, key);
+            error_handler_to_client(data->orig.conn.status, key);
             return data->orig.conn.status;
         }
     }
