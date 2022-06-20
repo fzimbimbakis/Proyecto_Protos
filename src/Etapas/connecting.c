@@ -21,6 +21,7 @@ void connecting_init(const unsigned state, struct selector_key *key){
     data->orig.conn.wb = &data->write_buffer;
     data->orig.conn.client_fd = data->client_fd;
     data->orig.conn.origin_fd = -1;
+    data->orig.conn.status=status_succeeded;
 
     int *fd= &data->origin_fd;
 
@@ -64,8 +65,31 @@ unsigned connecting_write(struct selector_key *key){
 
     if(data->orig.conn.status != status_succeeded){
         debug(etiqueta, 0, "status != succeeded from init", key->fd);
-        return REQUEST_WRITE;
+        if(data->origin_resolution_current != NULL && data->origin_resolution_current->ai_next != NULL){                   //// Check if next IP exists
+
+
+            debug(etiqueta, 0, "Checking next IP", key->fd);
+            struct addrinfo * current = data->origin_resolution_current = data->origin_resolution_current->ai_next;
+
+            //// IPv4
+            if(current->ai_family == AF_INET)
+                memcpy((struct sockaddr_in *) &(data->origin_addr), current->ai_addr, sizeof(struct sockaddr_in));
+
+            //// IPv6
+            if(current->ai_family == AF_INET6)
+                memcpy((struct sockaddr_in6 *) &(data->origin_addr), current->ai_addr, sizeof(struct sockaddr_in6));
+
+            connection(key);
+
+            return REQUEST_CONNECTING;//vuelve a probar la siguiente ip
+
+        }
+        selector_unregister_fd(key->s, data->origin_fd);
+        close(data->origin_fd);
+        data->origin_fd=-1;
+        return error_handler(data->orig.conn.status, key);
     }
+
     //TODO agregar un status al registro, quizas habria que moverlo
     time_t rawtime;
     struct tm * timeinfo;
@@ -75,7 +99,7 @@ unsigned connecting_write(struct selector_key *key){
     struct sockaddr * clientAddr = (struct sockaddr *) &ATTACHMENT(key)->client_addr;
     char * orig = malloc(ATTACHMENT(key)->origin_addr_len);
     char * client = malloc(ATTACHMENT(key)->client_addr_len);
-    printf("%s\t to: %s \t from: %s \t %s\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo));
+    //printf("%s\t to: %s \t from: %s \t %s\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo));
 
 
     debug(etiqueta, 0, "Starting stage", key->fd);
@@ -89,6 +113,7 @@ unsigned connecting_write(struct selector_key *key){
         //// Error on getsockopt
         debug(etiqueta, 0, "Error on getsockopt -> REQUEST_WRITE to reply error to client", key->fd);
         data->orig.conn.status=status_general_socks_server_failure;
+        printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo), data->orig.conn.status);
         return error_handler(data->orig.conn.status, key);
     }
 
@@ -102,20 +127,24 @@ unsigned connecting_write(struct selector_key *key){
             metrics_max_concurrent_connections = metrics_concurrent_connections;
 
         debug(etiqueta, 0, "Connection succeed", key->fd);
+        printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo), data->orig.conn.status);
+
         if(data->client.request.addr_family == socks_req_addrtype_domain)
             freeaddrinfo(data->origin_resolution);
         data->orig.conn.status=status_succeeded;
         data->orig.conn.origin_fd = key->fd;
-        request_marshall(data->orig.conn.status, &data->write_buffer);
-        selector_set_interest(key->s,data->client_fd, OP_WRITE);
-        selector_set_interest_key(key, OP_NOOP);
-        return REQUEST_WRITE;
+        //request_marshall(data->orig.conn.status, &data->write_buffer);
+        //selector_set_interest(key->s,data->client_fd, OP_WRITE);
+        //selector_set_interest_key(key, OP_NOOP);
+        //return REQUEST_WRITE;
 
     }else{                                                                      //// Connection refused, check next IP if any
 
         if(data->origin_resolution_current==NULL){
             debug(etiqueta, 0, "Connection refused -> REQUEST_WRITE to reply error to client", key->fd);
             data->orig.conn.status= errno_to_socks(error);
+            printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo), data->orig.conn.status);
+
             return error_handler(data->orig.conn.status, key);
         }
 
@@ -138,9 +167,13 @@ unsigned connecting_write(struct selector_key *key){
 
             connection(key);
 
+            return REQUEST_CONNECTING;//vuelve a probar la siguiente ip
+
         } else{
             debug(etiqueta, 0, "No more IPs -> REQUEST_WRITE to reply error to client", key->fd);
             data->orig.conn.status=errno_to_socks(error);
+            printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo), data->orig.conn.status);
+
             if(data->client.request.addr_family == socks_req_addrtype_domain)
                 freeaddrinfo(data->origin_resolution);
             return error_handler(data->orig.conn.status, key);
@@ -163,7 +196,7 @@ unsigned connecting_write(struct selector_key *key){
     s|= selector_set_interest_key(key, OP_NOOP);
 
     debug(etiqueta, s, "Finished stage", key->fd);
-    return SELECTOR_SUCCESS == s ? REQUEST_CONNECTING:ERROR;
+    return SELECTOR_SUCCESS == s ? REQUEST_WRITE:ERROR;
 }
 
 //// CLOSE
@@ -230,6 +263,7 @@ enum socks_reply_status connection(struct selector_key *key){
         data->client.request.status = errno_to_socks(errno);
         data->orig.conn.status=errno_to_socks(errno);
         error_handler(data->orig.conn.status, key);
+        return data->orig.conn.status;
         /*debug(etiqueta, connectResult, "Connection for origin socket failed", key->fd);
         data->client.request.status = errno_to_socks(errno);
         goto fail;*/
@@ -241,6 +275,7 @@ enum socks_reply_status connection(struct selector_key *key){
             debug(etiqueta, st, "Error setting interest", key->fd);
             data->orig.conn.status=status_general_socks_server_failure;
             error_handler(data->orig.conn.status, key);
+            return data->orig.conn.status;
         }
 
         debug(etiqueta, connectResult, "Me suscribo a escritura para esperar que se complete la conexión", key->fd);
@@ -256,6 +291,7 @@ enum socks_reply_status connection(struct selector_key *key){
         ATTACHMENT(key)->references += 1;           // TODO ?
     }
     else{     //// Connected with no EINPROGRESS
+    //TODO: ver este caso
         ATTACHMENT(key)->references += 1;           // TODO ?
         selector_status st= selector_set_interest_key(key, OP_READ);
         if(SELECTOR_SUCCESS != st){
