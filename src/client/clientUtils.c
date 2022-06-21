@@ -78,11 +78,9 @@ int add_user(uint8_t* buffer){
     printf("Enter new username: ");
     scanf("%s",username);
     int nusername= strlen((char*)username);
-    //printf("length username: %d\n", nusername);
     printf("Enter new password: ");
     scanf("%s", password);
     int npassword= strlen((char*)password);
-    //printf("length password: %d\n", npassword);
     buffer[1]=nusername;
     strcpy((char*)buffer+2,(char*) username);
     buffer[nusername+2]=npassword;
@@ -94,12 +92,9 @@ int add_user(uint8_t* buffer){
 int delete_user(uint8_t* buffer){
     uint8_t username[255];
 
-    printf("Enter new username: ");
+    printf("Enter username to delete: ");
     scanf("%s",username );
     int nusername= strlen((char*)username);
-    //printf("length username: %d\n", nusername);
-    //printf("%s", username);
-
     buffer[1]=nusername;
     strcpy((char*)buffer+2,(char*) username);
 
@@ -122,8 +117,10 @@ int disable_enable(uint8_t* buffer, char* print_string){
         buffer[1]=0x00;
     }else if(strcmp((char*)on_off, "off")==0){
         buffer[1]=0x01;
-    }else
-        buffer[1]=0xFF;//TODO: ver que hacer en este caso
+    }else {
+        printf("Invalid option\n");
+        return -1;
+    }
     return 2;
 }
 
@@ -184,19 +181,19 @@ int send_request(int sockfd, int * index){
             buffer[0]=0x0D;
             bytes_to_send= disable_enable(buffer, "Turn on/off password dissectors: ");
             break;
-        case 255:
+        default:
             buffer[0]=0xFF;
             break;
-        default:
-            return -1;
     }
+
+    if(bytes_to_send < 0)
+        return -1;
 
     return send(sockfd, buffer, bytes_to_send,0);
 }
 
 void supported_indexes(char* buffer){
     uint8_t b=buffer[1];//length
-    //printf("%d", b);
     for(uint8_t i=0; i < b ; i++){
         printf("Index %d supported\n", buffer[2+i]);
     }
@@ -205,19 +202,15 @@ void supported_indexes(char* buffer){
 
 void list_users(char* buffer){
     uint8_t b=buffer[1];//length
-    //printf("%s\n\n", buffer +2);
-    //printf("%d", b);
     int index=2;
     char aux[256];
     uint8_t user_len;
     for(uint8_t i=0 ; i < b ; i++){
         user_len=buffer[index++];
-        //printf("userlen= %d\n", user_len);
         strncpy(aux, buffer + index, user_len);
         aux[user_len] = 0;
         printf("User: %s\n", aux);
         index+=user_len;
-        //printf("index= %d\n", index);
     }
 }
 
@@ -299,11 +292,8 @@ int request_response(int sockfd, int req_index){
         case 12://Disable server authentication.
             printf("Disabled/enabled server authentication successfully\n");
             break;
-        case 13://Disable password disectors.
+        case 13://Disable password dissectors.
             printf("Disabled/enabled password dissectors successfully\n");
-            break;
-        case 255:
-            buffer[0]=0xFF;
             break;
         default:
             return -1;

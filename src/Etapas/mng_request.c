@@ -46,7 +46,7 @@ int checkIndex(uint8_t const *ptr, uint8_t size, uint8_t *error) {
         case mng_request_index_delete_user:
         case mng_request_index_disable_auth:
         case mng_request_index_disable_password_disectors:
-        case mng_request_index_shutdown_server:
+        //case mng_request_index_shutdown_server:
             return true;
         default: {
             *error = mng_status_index_not_supported;
@@ -428,10 +428,13 @@ enum mng_state process_mng_index(struct selector_key *key, buffer *wb, enum mng_
         case mng_request_index_disable_password_disectors:               //// Disable password dissectors
             return MNG_REQUEST_READ;
 
-        case mng_request_index_shutdown_server:                          //// Shutdown server
-            abort();
         default: {
             return MNG_ERROR;
+            /**
+             * status_mng_marshal(wb, mng_status_index_not_supported);
+            selector_set_interest_key(key, OP_WRITE);
+            return MNG_REQUEST_WRITE;
+             */
         }
     }
 }
@@ -523,7 +526,6 @@ void process_mng_params_request(struct selector_key *key, buffer *wb, enum mng_r
         case mng_request_index_historic_connections_attempts:
         case mng_request_index_average_bytes_per_read:
         case mng_request_index_average_bytes_per_write:
-        case mng_request_index_shutdown_server:
         default:
             debug(etiqueta, index, "Incorrect index", 0);
             status_mng_marshal(wb, mng_status_server_error);
@@ -554,7 +556,7 @@ void supported_indexes_mng_request_marshall(buffer *wb) {
         return;
     int i = 0;
     buf[i++] = 0x00;
-    buf[i++] = 0x0F;
+    buf[i++] = 0x0E;
     buf[i++] = 0x00;
     buf[i++] = 0x01;
     buf[i++] = 0x02;
@@ -569,7 +571,6 @@ void supported_indexes_mng_request_marshall(buffer *wb) {
     buf[i++] = 0x0B;
     buf[i++] = 0x0C;
     buf[i++] = 0x0D;
-    buf[i++] = 0xFF;
 
     buffer_write_adv(wb, i);
 }

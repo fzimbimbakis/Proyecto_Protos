@@ -128,7 +128,6 @@ enum mng_request_indexes
     mng_request_index_delete_user = 0x0B,
     mng_request_index_disable_auth = 0x0C,
     mng_request_index_disable_password_disectors = 0x0D,
-    mng_request_index_shutdown_server = 0xFF,
 };
 
 typedef struct mng_request_st
