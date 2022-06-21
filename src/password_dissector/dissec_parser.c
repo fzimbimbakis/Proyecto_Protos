@@ -139,7 +139,7 @@ enum dissec_parser_state pass_read_handler(struct dissec_parser *p, uint8_t b) {
     if (b == 0x0A) {
         p->password = checkSize(p->password, p->current_index);
         p->password[p->current_index] = 0;
-        char *orig = malloc(100);             // TODO size?
+        char *orig = malloc(100);
         char *client = malloc(100);
         time_t now;
         time(&now);

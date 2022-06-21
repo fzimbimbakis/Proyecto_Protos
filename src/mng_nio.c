@@ -117,7 +117,6 @@ static struct socks5 *mng_new(int client_fd) {
     ret->done_state = MNG_DONE;
     ret->error_state = MNG_ERROR;
 
-    // TODO El tamaño del buffer podría depender de la etapa
     debug(etiqueta, 0, "Init buffers", client_fd);
     buffer_init(&ret->read_buffer, N(ret->raw_buff_a), ret->raw_buff_a);
     buffer_init(&ret->write_buffer, N(ret->raw_buff_b), ret->raw_buff_b);
