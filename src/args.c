@@ -105,7 +105,7 @@ int parse_args(const int argc, char *const * argv, struct socks5args *args) {
     memset(&args->mng_addr_info, 0, sizeof(args->mng_addr_info));
     memset(&args->mng_addr_info6, 0, sizeof(args->mng_addr_info6));
 
-    args->disectors_enabled = true;
+    args->disectors_enabled = 0x00;
 
     args->debug = 0;
 
