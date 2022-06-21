@@ -222,8 +222,10 @@ void list_users(char* buffer){
 }
 
 uint32_t cast_uint32(char* buffer){
-    return buffer[1]|(buffer[2]<<8)|
-           (buffer[3]<<16)|(buffer[4]<<24);
+    uint8_t v4[4] = {buffer[1],buffer[2],buffer[3],buffer[4]};
+    uint32_t *allOfIt;
+    allOfIt = (uint32_t*)v4;
+    return *allOfIt;
 }
 
 
