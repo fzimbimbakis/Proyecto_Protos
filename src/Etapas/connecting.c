@@ -47,10 +47,6 @@ void connecting_init(const unsigned state, struct selector_key *key){
 
     data->orig.conn.status=connection(key);
 
-    /*fail:
-    debug(etiqueta, 0, "Fail", 0);
-    fprintf(stderr, "%s\n",strerror(errno));
-    exit(EXIT_FAILURE);     //// TODO Exit?*/
 }
 
 //// WRITE
@@ -90,16 +86,11 @@ unsigned connecting_write(struct selector_key *key){
         return error_handler_to_client(data->orig.conn.status, key);
     }
 
-    //TODO agregar un status al registro, quizas habria que moverlo
-//    time_t rawtime;
-//    struct tm * timeinfo;
-//    time ( &rawtime );
-//    timeinfo = localtime ( &rawtime );
+
     struct sockaddr * origAddr = (struct sockaddr *) &ATTACHMENT(key)->origin_addr;
     struct sockaddr * clientAddr = (struct sockaddr *) &ATTACHMENT(key)->client_addr;
     char * orig = malloc(MAX_IP_LENGTH);
     char * client = malloc(MAX_IP_LENGTH);
-    //printf("%s\t to: %s \t from: %s \t %s\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, 100, origAddr), sockaddr_to_human(client, 100, clientAddr), asctime (timeinfo));
 
 
     debug(etiqueta, 0, "Starting stage", key->fd);
@@ -192,7 +183,6 @@ unsigned connecting_write(struct selector_key *key){
             if(data->client.request.addr_family == socks_req_addrtype_domain)
                 freeaddrinfo(data->origin_resolution);
 
-            // TODO Hay que hacer close del origin fd?
             return error_handler_to_client(data->orig.conn.status, key);
         }
 
@@ -205,7 +195,6 @@ unsigned connecting_write(struct selector_key *key){
     if(-1 == request_marshall_result){
         debug(etiqueta, request_marshall_result, "Error request marshall", key->fd);
         return ERROR;
-        //abort();//TODO: ver este caso porque sin request marshall no se puede enviar
     }
 
     selector_status s=0;
@@ -222,7 +211,6 @@ void connecting_close(const unsigned state, struct selector_key *key){
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct request_st *d = &ATTACHMENT(key)->client.request;
     if(d->parser != NULL) {
-        // TODO ver estos free porque rompen las cosas. Como que hacen el free antes de lo debido
         request_parser_close(d->parser);
         free(d->parser);
     }
@@ -305,11 +293,10 @@ enum socks_reply_status connection(struct selector_key *key){
             *fd=-1;
             return data->orig.conn.status;
         }
-        ATTACHMENT(key)->references += 1;           // TODO ?
+        ATTACHMENT(key)->references += 1;
     }
     else{     //// Connected with no EINPROGRESS
-    //TODO: ver este caso
-        ATTACHMENT(key)->references += 1;           // TODO ?
+        ATTACHMENT(key)->references += 1;
         selector_status st= selector_set_interest_key(key, OP_READ);
         if(SELECTOR_SUCCESS != st){
             debug(etiqueta, st, "Error setting interest", key->fd);

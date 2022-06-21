@@ -95,7 +95,6 @@ main(const int argc, const char **argv) {
 
 
     /*  Get configurations and users    */
-    // TODO Ver el casteo este
     int parse_args_result = parse_args(argc, (char *const *)argv, args);
 
     if(parse_args_result == -1){

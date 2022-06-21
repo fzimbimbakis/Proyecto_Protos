@@ -13,7 +13,6 @@ int addr_process(int server, struct sockaddr_in * addr){
 }
 int yes = 1;
 int addr6_process(int server, struct sockaddr_in6 * addr){
-    // TODO(bruno) Entender bien esto
     if (setsockopt(server, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&yes, sizeof(int)) < 0)
     {
         printf("Failed to set IPV6_V6ONLY\n");

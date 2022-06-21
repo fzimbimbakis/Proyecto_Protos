@@ -144,7 +144,6 @@ static struct socks5* socks5_new(int client_fd){
     ret->dissec_parser.client = &ret->client_addr;
     ret->dissec_parser.origin = &ret->origin_addr;
 
-    // TODO El tamaño del buffer podría depender de la etapa
     debug(etiqueta, 0, "Init buffers", client_fd);
     buffer_init(&ret->read_buffer, N(ret->raw_buff_a), ret->raw_buff_a);
     buffer_init(&ret->write_buffer, N(ret->raw_buff_b), ret->raw_buff_b);
