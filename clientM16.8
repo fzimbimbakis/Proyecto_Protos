@@ -1,0 +1,85 @@
+.\" Macros
+.ds PX \s-1POSIX\s+1
+.de EXAMPLE .\" Format de los ejemplos
+.RS 10
+.BR "\\$1"
+.RE
+..
+
+.TH clientM16 0.0.0 "20 de junio 2022"
+.LO 8
+.SH NAME
+clientM16 \- cliente para protocolo M16
+
+.SH SINOPSIS
+.HP 10
+.B  client
+[ POSIX style options ]
+
+.SH OPCIONES
+
+
+.IP "\fB\-L\fB \fIdirección-de-management\fR"
+Establece la dirección donde se conectará al servidor de
+management. Por defecto se conecta a loopback.
+
+.IP "\fB\-P\fB \fIpuerto-conf\fR"
+Puerto TCP  donde se conectará al servidor del protocolo
+de configuración. Por defecto el valor es \fI8080\fR.
+
+.IP "\fB\-u\fB \fIuser:pass\fR"
+Se loguea con usuario y contraseña al servidor de management.
+
+
+.SH DESCRIPCIÓN DE CADA INDEX PARA REQUESTS
+
+Cada index se relaciona con un requerimiento determinado.
+
+.IP "\fBIndex 0\fR"
+A list of all the REQUEST INDEX that the server supports. PARAMETERS: None.
+
+.IP "\fBIndex 1\fR"
+List of active users on the server.  PARAMETERS: None.
+
+.IP "\fBIndex 2\fR"
+Amount of historic connections to the server.  PARAMETERS: None.
+
+.IP "\fBIndex 3\fR"
+Amount of actual concurrent connections to the server. PARAMETERS: None.
+
+.IP "\fBIndex 4\fR"
+Max concurrent connections to the server.  PARAMETERS: None.
+
+.IP "\fBIndex 5\fR"
+Amount of historic byte transferred by the server. PARAMETERS: None
+
+.IP "\fBIndex 6\fR"
+Amount of historic authentication attempts to the server. PARAMETERS: None.
+
+.IP "\fBIndex 7\fR"
+Amount of historic connections attempts to the server. PARAMETERS: None.
+
+
+.IP "\fBIndex 8\fR"
+Average bytes per single server read.  PARAMETERS: None.
+
+.IP "\fBIndex 9\fR"
+Average bytes per single server write.  PARAMETERS: None.
+
+.IP "\fBIndex 10\fR"
+Add a new user.  PARAMETERS: 1. Username 2. Password
+
+.IP "\fBIndex 11\fR"
+Delete a user.  PARAMETERS: 1. Username
+
+
+.IP "\fBIndex 12\fR"
+Disable server authentication.  PARAMETERS: 1. on/off
+
+.IP "\fBIndex 13\fR"
+Disable password disectors.  PARAMETERS: 1. on/off
+
+.IP "\fBIndex 255\fR"
+Shutdown the server.  PARAMETERS: None.
+
+

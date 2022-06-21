@@ -16,7 +16,7 @@ enum socks_reply_status errno_to_socks(int e);
 //// INIT
 
 void connecting_init(const unsigned state, struct selector_key *key){
-    char * etiqueta = "CONNECTION";
+    char * etiqueta = "CONNECTION INIT";
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct socks5 * data = ATTACHMENT(key);
     data->orig.conn.wb = &data->write_buffer;

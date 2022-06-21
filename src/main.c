@@ -103,6 +103,8 @@ main(const int argc, const char **argv) {
         exit(1);
     }
 
+    password_dissectors = args->disectors_enabled;
+
     FILE* filePointer;
     int bufferLength = 255;
     size_t aux;

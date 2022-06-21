@@ -45,7 +45,7 @@ uint8_t handshake_response(int sockfd){
 
 
 int send_credentials(int sockfd, struct user* user){
-    uint8_t buffer[100];
+    uint8_t buffer[510];
     int i = 0;
     buffer[i++]=0x01;//subnegotiation version
 
@@ -71,8 +71,8 @@ uint8_t credentials_response(int sockfd){
 
 
 int add_user(uint8_t* buffer){
-    uint8_t username[20];
-    uint8_t password[20];
+    uint8_t username[255];
+    uint8_t password[255];
 
 
     printf("Enter new username: ");
@@ -92,13 +92,13 @@ int add_user(uint8_t* buffer){
 }
 
 int delete_user(uint8_t* buffer){
-    uint8_t username[20];
+    uint8_t username[255];
 
     printf("Enter new username: ");
     scanf("%s",username );
     int nusername= strlen((char*)username);
-    printf("length username: %d\n", nusername);
-    printf("%s", username);
+    //printf("length username: %d\n", nusername);
+    //printf("%s", username);
 
     buffer[1]=nusername;
     strcpy((char*)buffer+2,(char*) username);
@@ -107,7 +107,7 @@ int delete_user(uint8_t* buffer){
 }
 
 int disable_enable(uint8_t* buffer, char* print_string){
-    uint8_t on_off[10];
+    uint8_t on_off[50];
 
     printf("%s", print_string);
     scanf("%s",(char*)on_off );
@@ -128,7 +128,7 @@ int disable_enable(uint8_t* buffer, char* print_string){
 }
 
 int send_request(int sockfd, int * index){
-    uint8_t buffer[250];
+    uint8_t buffer[512];
 
     int bytes_to_send=1;
 
