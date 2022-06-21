@@ -16,7 +16,7 @@ enum socks_reply_status errno_to_socks(int e);
 //// INIT
 
 void connecting_init(const unsigned state, struct selector_key *key){
-    char * etiqueta = "CONNECTION";
+    char * etiqueta = "CONNECTION INIT";
     debug(etiqueta, 0, "Starting stage", key->fd);
     struct socks5 * data = ATTACHMENT(key);
     data->orig.conn.wb = &data->write_buffer;
@@ -91,10 +91,10 @@ unsigned connecting_write(struct selector_key *key){
     }
 
     //TODO agregar un status al registro, quizas habria que moverlo
-    time_t rawtime;
-    struct tm * timeinfo;
-    time ( &rawtime );
-    timeinfo = localtime ( &rawtime );
+//    time_t rawtime;
+//    struct tm * timeinfo;
+//    time ( &rawtime );
+//    timeinfo = localtime ( &rawtime );
     struct sockaddr * origAddr = (struct sockaddr *) &ATTACHMENT(key)->origin_addr;
     struct sockaddr * clientAddr = (struct sockaddr *) &ATTACHMENT(key)->client_addr;
     char * orig = malloc(MAX_IP_LENGTH);
@@ -113,7 +113,11 @@ unsigned connecting_write(struct selector_key *key){
         //// Error on getsockopt
         debug(etiqueta, 0, "Error on getsockopt -> REQUEST_WRITE to reply error to client", key->fd);
         data->orig.conn.status=status_general_socks_server_failure;
-        printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), asctime (timeinfo), data->orig.conn.status);
+        time_t now;
+        time(&now);
+        char buf[sizeof "2011-10-08T07:07:09Z"];
+        strftime(buf, sizeof buf, "%FT%TZ", gmtime(&now));
+        printf("%s\t%s\t to: %s \t from: %s\t status: %d\n", buf, users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), data->orig.conn.status);
         return error_handler_to_client(data->orig.conn.status, key);
     }
 
@@ -125,9 +129,12 @@ unsigned connecting_write(struct selector_key *key){
         metrics_concurrent_connections += 1;
         if(metrics_concurrent_connections > metrics_max_concurrent_connections)
             metrics_max_concurrent_connections = metrics_concurrent_connections;
-
+        time_t now;
+        time(&now);
+        char buf[sizeof "2011-10-08T07:07:09Z"];
+        strftime(buf, sizeof buf, "%FT%TZ", gmtime(&now));
         debug(etiqueta, 0, "Connection succeed", key->fd);
-        printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), asctime (timeinfo), data->orig.conn.status);
+        printf("%s\t%s\t to: %s \t from: %s\t status: %d\n", buf, users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), data->orig.conn.status);
 
         if(data->client.request.addr_family == socks_req_addrtype_domain)
             freeaddrinfo(data->origin_resolution);
@@ -143,7 +150,11 @@ unsigned connecting_write(struct selector_key *key){
         if(data->origin_resolution_current==NULL){
             debug(etiqueta, 0, "Connection refused -> REQUEST_WRITE to reply error to client", key->fd);
             data->orig.conn.status= errno_to_socks(error);
-            printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), asctime (timeinfo), data->orig.conn.status);
+            time_t now;
+            time(&now);
+            char buf[sizeof "2011-10-08T07:07:09Z"];
+            strftime(buf, sizeof buf, "%FT%TZ", gmtime(&now));
+            printf("%s\t%s\t to: %s \t from: %s \t status: %d\n", buf, users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), data->orig.conn.status);
 
             return error_handler_to_client(data->orig.conn.status, key);
         }
@@ -172,7 +183,11 @@ unsigned connecting_write(struct selector_key *key){
         } else{
             debug(etiqueta, 0, "No more IPs -> REQUEST_WRITE to reply error to client", key->fd);
             data->orig.conn.status=errno_to_socks(error);
-            printf("%s\t to: %s \t from: %s \t %s \t status: %d\n", users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), asctime (timeinfo), data->orig.conn.status);
+            time_t now;
+            time(&now);
+            char buf[sizeof "2011-10-08T07:07:09Z"];
+            strftime(buf, sizeof buf, "%FT%TZ", gmtime(&now));
+            printf("%s\t%s\t to: %s \t from: %s \t status: %d\n",buf, users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), data->orig.conn.status);
 
             if(data->client.request.addr_family == socks_req_addrtype_domain)
                 freeaddrinfo(data->origin_resolution);

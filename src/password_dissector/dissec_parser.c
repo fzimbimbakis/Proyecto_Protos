@@ -6,6 +6,8 @@
 #include "../../include/debug.h"
 #include <sys/socket.h>
 #include <netutils.h>
+#include <time.h>
+
 int isascii2(int c){
  return ((c >= 0) && (c <= 127));
 }
@@ -139,11 +141,16 @@ enum dissec_parser_state pass_read_handler(struct dissec_parser *p, uint8_t b) {
         p->password[p->current_index] = 0;
         char *orig = malloc(100);             // TODO size?
         char *client = malloc(100);
-        printf("Username: %s Password: %s\t Active user: %s Client address: %s Origin address: %s\n",
-               p->username, p->password,
+        time_t now;
+        time(&now);
+        char buf[sizeof "2011-10-08T07:07:09Z"];
+        strftime(buf, sizeof buf, "%FT%TZ", gmtime(&now));
+        printf("%s\tActive user: %s\tRegister: P\tProcolo: POP3\tClient address: %s Origin address: %s\tUsername: %s\tPassword: %s\n",
+               buf,
                users[*p->userIndex].name,
                sockaddr_to_human(client, 100, (struct sockaddr *) p->client),
-               sockaddr_to_human(orig, 100, (struct sockaddr *) p->origin));
+               sockaddr_to_human(orig, 100, (struct sockaddr *) p->origin),
+                p->username, p->password);
         free(orig);
         free(client);
         debug(etiqueta, (int) p->current_index, (char *) p->password, 0);

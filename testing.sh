@@ -11,7 +11,7 @@ case $3 in
     curl -x socks5://$1@127.0.0.1:$2 'http://127.0.0.1:3333';;
   "invalid-ipv6-curl")
       curl  -x socks5://$1@127.0.0.1:$2 'http://[::1]:3333';;
-  "invalid_dns-curl")
+  "invalid-dns-curl")
       curl -x socks5h://$1@127.0.0.1:$2 'http://xxxxxxxxxxx/';;
   "dns-ipv6")
       curl -x socks5h://$1@127.0.0.1:$2 http://ipv6.leak.com.ar/;;

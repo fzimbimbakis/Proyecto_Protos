@@ -32,7 +32,9 @@ enum socks_v5state error_handler_to_client(enum socks_reply_status status, struc
     struct socks5 * data= ATTACHMENT(key);
     request_marshall(status, &data->write_buffer);
     selector_set_interest(key->s, data->client_fd, OP_WRITE);
-    selector_set_interest_key(key, OP_NOOP);
+    if(data->origin_fd!=-1)
+        selector_set_interest(key->s, data->origin_fd, OP_NOOP);
+
     return REQUEST_WRITE;
 }
 

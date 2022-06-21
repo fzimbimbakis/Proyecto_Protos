@@ -28,7 +28,7 @@ struct socks5args {
 
     uint16_t buffer_size, mng_buffer_size;
 
-    bool            disectors_enabled;
+    uint8_t           disectors_enabled;
 
     char * credentials;
 };
