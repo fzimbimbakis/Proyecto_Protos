@@ -49,13 +49,14 @@ int parse_args(const int argc, char *const * argv, struct m16args *args) {
     args->mng_family = AF_UNSPEC;
     memset(&args->mng_addr_info, 0, sizeof(args->mng_addr_info));
     memset(&args->mng_addr_info6, 0, sizeof(args->mng_addr_info6));
+    args->append = false;
 
     int c;
     int aux;
     while (true) {
         int option_index = 0;
 
-        c = getopt_long(argc, argv, "dD:L:P:u:", NULL, &option_index);
+        c = getopt_long(argc, argv, "dD:L:P:u:f:", NULL, &option_index);
         if (c == -1)
             break;
 
@@ -91,6 +92,10 @@ int parse_args(const int argc, char *const * argv, struct m16args *args) {
                 aux = user(optarg, args->user);
                 if(aux == -1)
                     return -1;
+                break;
+            case 'f':
+                args->file_path = optarg;
+                args->append = true;
                 break;
             default:
                 fprintf(stderr, "unknown argument %d.\n", c);
