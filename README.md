@@ -1,5 +1,19 @@
 # Servidor proxy SOCKSv5 [RFC1928] 
 
+##Ubicacion de los Materiales 🧭
+Archivos fuente .c se encuentran dentro de las subcarpetas
+```
+./src/
+```
+Includes necesarios para el funcionamiento
+```
+./include/
+```
+Archivos ejecutables server y client
+```
+./bin/
+```
+
 ##Instrucciones de Compilacion 🛠️
 Para compilar todo el proyecto
 ```
