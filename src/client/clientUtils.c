@@ -221,7 +221,7 @@ uint32_t cast_uint32(char* buffer){
     return *allOfIt;
 }
 
-
+extern FILE * append_file;
 int request_response(int sockfd, int req_index){
     uint8_t buffer[500];
     recv(sockfd, buffer, 500, 0);
@@ -299,7 +299,8 @@ int request_response(int sockfd, int req_index){
             return -1;
 
     }
-
+    if(append_file != NULL)
+        fprintf(append_file, "%u ", stats);
     return 0;
 
 

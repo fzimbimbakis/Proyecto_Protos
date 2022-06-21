@@ -14,7 +14,7 @@
 
 
 
-
+FILE * append_file;
 int main(const int argc, const char **argv)
 {
 
@@ -38,6 +38,14 @@ int main(const int argc, const char **argv)
         free(args);
         exit(1);
     }
+
+    if(args->append){
+        append_file = fopen(args->file_path, "a");
+        if(append_file == NULL){
+            printf("Error opening %s\n", args->file_path);
+            return -1;
+        }
+    } else append_file = NULL;
 
     int debug_option = args->debug;
     debug_init(debug_option);

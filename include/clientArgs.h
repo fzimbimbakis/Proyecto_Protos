@@ -19,6 +19,9 @@ struct m16args{
 
     struct user* user;
 
+    char * file_path;
+    bool append;
+
     bool debug;
 };
 
