@@ -52,4 +52,4 @@ clean:
 	rm -f ./src/client/*.o
 
 
-.PHONY: all clean client server
+.PHONY: all clean

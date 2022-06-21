@@ -125,7 +125,6 @@ typedef struct socks5 {
         struct copy_st               copy;
     } orig;
 
-    //TODO(facu): ver tamaño de buffer mas conveniente
     uint8_t raw_buff_a[2048], raw_buff_b[2048];
     buffer read_buffer, write_buffer;
 
