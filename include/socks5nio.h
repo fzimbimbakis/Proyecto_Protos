@@ -152,7 +152,7 @@ struct users {
     char *name;
     char *pass;
 };
-#define MAX_USERS 10
+#define MAX_USERS 255
 
 /** obtiene el struct (socks5 *) desde la llave de selecciÃ³n  */
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)

@@ -13,9 +13,6 @@
 #include <errno.h>
 
 
-#define MAX 80
-#define PORT 8080
-#define SA struct sockaddr
 
 
 int main(const int argc, const char **argv)
@@ -104,7 +101,6 @@ int main(const int argc, const char **argv)
             printf("Error sending credentials\n");
             goto end;
         }
-        //printf("send credentials");
     }
 
     response=credentials_response(sockfd);
@@ -116,10 +112,9 @@ int main(const int argc, const char **argv)
 
     int req_index;
     ret= send_request(sockfd, &req_index);
-    if(ret < 0){
-        printf("Send request error\n");
+    if(ret < 0)
         goto end;
-    }
+
 
     if(request_response(sockfd, req_index) <0)
         goto end;

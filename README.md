@@ -13,26 +13,31 @@ Para compilar solo el cliente
 ```
 make client
 ```
+Si se quiere realizar una limpieza de archivos objeto
+```
+make clean
+```
 
 ## Ejecución 🚀
 Para correr el server
 ```
 ./bin/server -u <user:pass>
 ```
-También tiene más flags disponibles para ejecutarlo
+También tiene más flags disponibles para ejecutarlo.
 Se debe mirar su respectivo manual
 ```
-man ./socksd
+man ./socksd.8
 ```
 
-Si se quiere aprovechar la opción de management se debe ejecutar su cliente
+Si se quiere aprovechar la opción de management se debe ejecutar su cliente. 
+Solo se acepta el usuario y contraseña <ins>admin:admin</ins> indicado en credentials.txt
 ```
-./bin/client -u <user:pass>
+./bin/client -u admin:admin
 ```
-También tiene más flags disponibles para ejecutarlo
+También tiene más flags disponibles para ejecutarlo.
 Se debe mirar su respectivo manual
 ```
-man ./clientM16
+man ./clientM16.8
 ```
 
 ## Testing 👌
@@ -56,7 +61,7 @@ Dentro de las opciones se encuentran:
   - (<ins>1.7</ins>)  Origin server (IPV4) no presta servicio
 - invalid-ipv6-curl
   - (<ins>1.8</ins>)  Origin server (IPV6) no presta servicio
-- invalid_dns-curl 
+- invalid-dns-curl 
   - (<ins>1.9</ins>)  Falla resolución de nombres
 - dns-ipv6 
   - (<ins>1.10</ins>)  Comportamiento origin server resuelve DNS IPV6
