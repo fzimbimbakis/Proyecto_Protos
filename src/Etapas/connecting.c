@@ -108,7 +108,7 @@ unsigned connecting_write(struct selector_key *key){
         time(&now);
         char buf[sizeof "2011-10-08T07:07:09Z"];
         strftime(buf, sizeof buf, "%FT%TZ", gmtime(&now));
-        printf("%s\t%s\t to: %s \t from: %s\t status: %d\n", buf, users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), data->orig.conn.status);
+        printf("%s\t%s\tRegister A\t to: %s \t from: %s\t status: %d\n", buf, users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), data->orig.conn.status);
         return error_handler_to_client(data->orig.conn.status, key);
     }
 
@@ -125,7 +125,7 @@ unsigned connecting_write(struct selector_key *key){
         char buf[sizeof "2011-10-08T07:07:09Z"];
         strftime(buf, sizeof buf, "%FT%TZ", gmtime(&now));
         debug(etiqueta, 0, "Connection succeed", key->fd);
-        printf("%s\t%s\t to: %s \t from: %s\t status: %d\n", buf, users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), data->orig.conn.status);
+        printf("%s\t%s\tRegister A\t to: %s \t from: %s\t status: %d\n", buf, users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), data->orig.conn.status);
 
         if(data->client.request.addr_family == socks_req_addrtype_domain)
             freeaddrinfo(data->origin_resolution);
@@ -145,7 +145,7 @@ unsigned connecting_write(struct selector_key *key){
             time(&now);
             char buf[sizeof "2011-10-08T07:07:09Z"];
             strftime(buf, sizeof buf, "%FT%TZ", gmtime(&now));
-            printf("%s\t%s\t to: %s \t from: %s \t status: %d\n", buf, users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), data->orig.conn.status);
+            printf("%s\t%s\tRegister A\t to: %s \t from: %s \t status: %d\n", buf, users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), data->orig.conn.status);
 
             return error_handler_to_client(data->orig.conn.status, key);
         }
@@ -178,7 +178,7 @@ unsigned connecting_write(struct selector_key *key){
             time(&now);
             char buf[sizeof "2011-10-08T07:07:09Z"];
             strftime(buf, sizeof buf, "%FT%TZ", gmtime(&now));
-            printf("%s\t%s\t to: %s \t from: %s \t status: %d\n",buf, users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), data->orig.conn.status);
+            printf("%s\t%s\tRegister A\t to: %s \t from: %s \t status: %d\n",buf, users[ATTACHMENT(key)->userIndex].name, sockaddr_to_human(orig, MAX_IP_LENGTH, origAddr), sockaddr_to_human(client, MAX_IP_LENGTH, clientAddr), data->orig.conn.status);
 
             if(data->client.request.addr_family == socks_req_addrtype_domain)
                 freeaddrinfo(data->origin_resolution);

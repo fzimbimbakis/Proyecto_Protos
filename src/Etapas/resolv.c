@@ -87,8 +87,8 @@ unsigned request_resolv_done(struct selector_key *key) {
     //// IPv6
     if (current->ai_family == AF_INET6) {
         data->origin_domain = AF_INET6;
-        data->origin_addr_len = sizeof(struct sockaddr);
-        memcpy((struct sockaddr *) &(data->origin_addr), current->ai_addr, sizeof(struct sockaddr));
+        data->origin_addr_len = sizeof(struct sockaddr_in6);
+        memcpy((struct sockaddr_in6 *) &(data->origin_addr), current->ai_addr, sizeof(struct sockaddr_in6));
     }
     debug(etiqueta, 0, "", key->fd);
     debug(etiqueta, 0, "Finishing stage", key->fd);
